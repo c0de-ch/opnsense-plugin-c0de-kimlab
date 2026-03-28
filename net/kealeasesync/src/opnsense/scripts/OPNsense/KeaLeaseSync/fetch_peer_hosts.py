@@ -4,8 +4,8 @@
 Usage: fetch_peer_hosts.py <url> <api_key>
 
 Outputs pipe-delimited lines to stdout: RTYPE|hostname|ip|peer
-Only includes hosts with type=static or type=dynamic (skips type=peer
-to prevent transitive propagation between peers).
+Only includes hosts local to the peer's site — type=static, dynamic or
+mikrotik (skips type=peer to prevent transitive propagation between peers).
 
 On any error: prints warning to stderr, outputs nothing to stdout, exits 0.
 """
@@ -33,7 +33,7 @@ def fetch(url, api_key):
     for host in data.get('hosts', []):
         htype = host.get('type', '')
         # Only take local hosts from the peer — skip peer-of-peer to avoid loops
-        if htype not in ('static', 'dynamic'):
+        if htype not in ('static', 'dynamic', 'mikrotik'):
             continue
         hostname = host.get('hostname', '')
         ip = host.get('ip', '')

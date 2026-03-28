@@ -88,6 +88,21 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(lines[0], 'A|local-host|192.168.1.10|peer|')
 
     @patch.object(_urllib_request, 'urlopen')
+    def test_includes_mikrotik_type_hosts(self, mock_urlopen):
+        """MikroTik hosts are local to the peer's site and should be imported."""
+        mock_urlopen.return_value = _mock_response({
+            'hosts': [
+                {'hostname': 'mt-host', 'ip': '192.168.88.10', 'type': 'mikrotik',
+                 'rtype': 'A', 'mac': 'aa:bb:cc:dd:ee:01'},
+            ]
+        })
+        captured = io.StringIO()
+        with patch('sys.stdout', captured):
+            fetch('https://10.0.0.1', 'mykey')
+        self.assertEqual(
+            captured.getvalue().strip(), 'A|mt-host|192.168.88.10|peer|aa:bb:cc:dd:ee:01')
+
+    @patch.object(_urllib_request, 'urlopen')
     def test_empty_hosts_list(self, mock_urlopen):
         mock_urlopen.return_value = _mock_response({'hosts': []})
         captured = io.StringIO()

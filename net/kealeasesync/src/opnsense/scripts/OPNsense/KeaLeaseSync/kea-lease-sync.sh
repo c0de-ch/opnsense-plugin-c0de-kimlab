@@ -65,7 +65,9 @@ STATIC_LEASES="${RUN_DIR}/sync.static.$$"
 CURRENT_LEASES="${RUN_DIR}/sync.current.$$"
 : > "$STATIC_LEASES"
 : > "$CURRENT_LEASES"
-trap 'rm -f "$STATIC_LEASES" "$CURRENT_LEASES"' EXIT
+MIKROTIK_LEASES="${RUN_DIR}/sync.mikrotik.$$"
+MIKROTIK_ERR="${RUN_DIR}/sync.mikrotik.err.$$"
+trap 'rm -f "$STATIC_LEASES" "$CURRENT_LEASES" "$MIKROTIK_LEASES" "$MIKROTIK_ERR"' EXIT
 
 # ── Helper: clean hostname ───────────────────────────────────
 clean_hostname() {
@@ -166,7 +168,39 @@ if [ -f "$LEASE6_FILE" ]; then
     done
 fi
 
-# ── Step 3b: Fetch peer hosts (if enabled) ────────────────
+# ── Step 3b: Fetch MikroTik DHCP leases (if enabled) ──────
+MIKROTIK_COUNT=0
+if [ "$MIKROTIK_ENABLED" = "1" ] && [ -n "$MIKROTIK_HOST" ] && [ -n "$MIKROTIK_USER" ]; then
+    SCRIPT_DIR="$(dirname "$0")"
+    if MIKROTIK_PASSWORD="$MIKROTIK_PASSWORD" python3 "${SCRIPT_DIR}/fetch_mikrotik_leases.py" \
+        --host "$MIKROTIK_HOST" \
+        --port "${MIKROTIK_PORT:-443}" \
+        --user "$MIKROTIK_USER" \
+        --verify-ssl "${MIKROTIK_VERIFY_SSL:-0}" > "$MIKROTIK_LEASES" 2> "$MIKROTIK_ERR"; then
+        while IFS='|' read -r rtype hostname ip htype mac; do
+            [ -z "$ip" ] && continue
+            hostname=$(clean_hostname "$hostname") || continue
+            # Kea hosts take precedence — only add if no Kea entry for this rtype+hostname
+            if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
+                echo "${rtype}|${hostname}|${ip}|mikrotik|${mac}" >> "$CURRENT_LEASES"
+            fi
+        done < "$MIKROTIK_LEASES"
+        MIKROTIK_COUNT=$(grep -c '|mikrotik|' "$CURRENT_LEASES" 2>/dev/null)
+        MIKROTIK_COUNT=${MIKROTIK_COUNT:-0}
+        log_info "MikroTik: ${MIKROTIK_COUNT} hosts added from ${MIKROTIK_HOST}"
+    else
+        log_err "MikroTik: failed to fetch leases from ${MIKROTIK_HOST}"
+    fi
+    # Surface fetcher errors and warnings (auth failure, IPv6 endpoint unavailable, ...)
+    while read -r line; do
+        [ -n "$line" ] && log_err "MikroTik: ${line}"
+    done < "$MIKROTIK_ERR"
+    rm -f "$MIKROTIK_LEASES" "$MIKROTIK_ERR"
+elif [ "$MIKROTIK_ENABLED" = "1" ]; then
+    log_err "MikroTik enabled but host/username not configured"
+fi
+
+# ── Step 3c: Fetch peer hosts (if enabled) ────────────────
 PEER_COUNT=0
 if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ]; then
     PEER_HOSTS="${RUN_DIR}/sync.peer.$$"
@@ -174,7 +208,7 @@ if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ]; th
     if python3 "${SCRIPT_DIR}/fetch_peer_hosts.py" "$PEER_URL" "$PEER_API_KEY" > "$PEER_HOSTS" 2>/dev/null; then
         while IFS='|' read -r rtype hostname ip htype mac; do
             [ -z "$hostname" ] && continue
-            # Local hosts take precedence — only add if no local entry for this rtype+hostname
+            # Local and MikroTik hosts take precedence — only add if no local entry for this rtype+hostname
             if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
                 echo "${rtype}|${hostname}|${ip}|peer|${mac}" >> "$CURRENT_LEASES"
             fi
@@ -267,6 +301,8 @@ DYNAMIC_COUNT=$(grep -c '|dynamic|' "$CURRENT_LEASES" 2>/dev/null)
 DYNAMIC_COUNT=${DYNAMIC_COUNT:-0}
 PEER_COUNT=$(grep -c '|peer|' "$CURRENT_LEASES" 2>/dev/null)
 PEER_COUNT=${PEER_COUNT:-0}
+MIKROTIK_COUNT=$(grep -c '|mikrotik|' "$CURRENT_LEASES" 2>/dev/null)
+MIKROTIK_COUNT=${MIKROTIK_COUNT:-0}
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -281,6 +317,7 @@ cat > "$STATUS_FILE" <<STATUSEOF
     "static_count": ${STATIC_COUNT},
     "dynamic_count": ${DYNAMIC_COUNT},
     "peer_count": ${PEER_COUNT},
+    "mikrotik_count": ${MIKROTIK_COUNT},
     "duration": "${DURATION}s",
     "direct_domain": "${DIRECT_DOMAIN}",
     "proxy_domains": "${PROXY_DOMAINS}"
@@ -292,4 +329,4 @@ cat > "$HOSTS_FILE" <<HOSTSEOF
 {"hosts":[${HOSTS_JSON}]}
 HOSTSEOF
 
-log_info "Sync done: ${ADDED} registered, ${REMOVED} removed (${STATIC_COUNT} static, ${DYNAMIC_COUNT} dynamic, ${PEER_COUNT} peer) in ${DURATION}s"
+log_info "Sync done: ${ADDED} registered, ${REMOVED} removed (${STATIC_COUNT} static, ${DYNAMIC_COUNT} dynamic, ${MIKROTIK_COUNT} mikrotik, ${PEER_COUNT} peer) in ${DURATION}s"

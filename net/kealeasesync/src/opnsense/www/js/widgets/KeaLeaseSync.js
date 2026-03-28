@@ -155,6 +155,8 @@ export default class KeaLeaseSync extends BaseTableWidget {
                 typeBadge = '<span class="label label-info" style="font-size: 10px;">S</span>';
             } else if (host.type === 'peer') {
                 typeBadge = '<span class="label label-warning" style="font-size: 10px;">P</span>';
+            } else if (host.type === 'mikrotik') {
+                typeBadge = '<span class="label label-primary" style="font-size: 10px;">M</span>';
             } else {
                 typeBadge = '<span class="label label-default" style="font-size: 10px;">D</span>';
             }
@@ -204,9 +206,9 @@ export default class KeaLeaseSync extends BaseTableWidget {
         const cx = width / 2;
         const cy = height / 2;
 
-        // Separate static (inner ring), dynamic (middle ring), peer (outer ring)
+        // Separate static (inner ring), dynamic + MikroTik (middle ring), peer (outer ring)
         const staticHosts = hosts.filter(h => h.type === 'static');
-        const dynamicHosts = hosts.filter(h => h.type === 'dynamic');
+        const dynamicHosts = hosts.filter(h => h.type === 'dynamic' || h.type === 'mikrotik');
         const peerHosts = hosts.filter(h => h.type === 'peer');
 
         const innerRadius = Math.min(width, height) * 0.22;
