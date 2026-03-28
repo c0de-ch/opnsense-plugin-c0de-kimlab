@@ -44,7 +44,7 @@ function kealeasesync_services()
 
 function kealeasesync_cron()
 {
-    $jobs = array();
+    $jobs = [];
 
     $mdl = new \OPNsense\KeaLeaseSync\KeaLeaseSync();
     if ((string)$mdl->general->enabled == '1') {
@@ -52,16 +52,8 @@ function kealeasesync_cron()
         if (empty($interval) || $interval == '0') {
             $interval = '1';
         }
-        $jobs[] = array(
-            'minutes' => $interval == '1' ? '*' : '*/' . $interval,
-            'hours' => '*',
-            'days' => '*',
-            'months' => '*',
-            'weekdays' => '*',
-            'description' => 'Kea Lease DNS Sync',
-            'command' => 'kealeasesync run',
-            'origin' => 'kealeasesync',
-        );
+        $minutes = $interval == '1' ? '*' : '*/' . $interval;
+        $jobs[]['autocron'] = ['/usr/local/sbin/configctl kealeasesync run', $minutes];
     }
 
     return $jobs;
