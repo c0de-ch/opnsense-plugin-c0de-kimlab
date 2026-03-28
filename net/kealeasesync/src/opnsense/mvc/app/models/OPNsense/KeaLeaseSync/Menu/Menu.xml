@@ -1,0 +1,7 @@
+<menu>
+    <Services>
+        <KeaLeaseSync VisibleName="Kea Lease Sync" cssClass="fa fa-refresh" url="/ui/kealeasesync" order="50">
+            <General VisibleName="General" url="/ui/kealeasesync" order="0" />
+        </KeaLeaseSync>
+    </Services>
+</menu>

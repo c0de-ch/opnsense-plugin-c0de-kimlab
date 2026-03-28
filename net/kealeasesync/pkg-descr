@@ -1,0 +1,9 @@
+Kea Lease DNS Sync
+
+Synchronizes Kea DHCP leases and static reservations to Unbound DNS.
+Registers each host under a direct-access domain (real IP) and one or
+more proxy domains (reverse proxy IP), with automatic PTR records.
+
+Includes a dashboard widget with table and network map views.
+
+WWW: https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab

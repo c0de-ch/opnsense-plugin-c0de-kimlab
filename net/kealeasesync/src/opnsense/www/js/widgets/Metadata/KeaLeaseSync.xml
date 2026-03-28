@@ -1,0 +1,11 @@
+<metadata>
+    <title>Kea Lease Sync</title>
+    <filename>KeaLeaseSync</filename>
+    <endpoints>
+        <endpoint>/api/kealeasesync/service/status</endpoint>
+        <endpoint>/api/kealeasesync/service/hosts</endpoint>
+    </endpoints>
+    <translations>
+        <title>Kea Lease Sync</title>
+    </translations>
+</metadata>

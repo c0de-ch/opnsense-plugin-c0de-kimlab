@@ -1,0 +1,69 @@
+<model>
+    <mount>//OPNsense/KeaLeaseSync</mount>
+    <version>1.0.0</version>
+    <description>Kea Lease DNS Sync settings</description>
+    <items>
+        <enabled type="BooleanField">
+            <Default>0</Default>
+            <Required>Y</Required>
+        </enabled>
+        <directDomain type="TextField">
+            <Required>N</Required>
+            <Mask>/^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/</Mask>
+            <ValidationMessage>Enter a valid domain name</ValidationMessage>
+        </directDomain>
+        <proxyDomains type="TextField">
+            <Required>N</Required>
+            <Mask>/^(([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\s+|$))*$/</Mask>
+            <ValidationMessage>Enter valid domain names separated by spaces</ValidationMessage>
+        </proxyDomains>
+        <proxyIpv4 type="NetworkField">
+            <Required>N</Required>
+            <NetMaskAllowed>N</NetMaskAllowed>
+            <AddressFamily>IPv4</AddressFamily>
+        </proxyIpv4>
+        <proxyIpv6 type="NetworkField">
+            <Required>N</Required>
+            <NetMaskAllowed>N</NetMaskAllowed>
+            <AddressFamily>IPv6</AddressFamily>
+        </proxyIpv6>
+        <lease4File type="TextField">
+            <Default>/var/db/kea/kea-leases4.csv</Default>
+            <Required>Y</Required>
+            <Mask>/^\/[^\s]+$/</Mask>
+            <ValidationMessage>Enter a valid absolute file path</ValidationMessage>
+        </lease4File>
+        <lease6File type="TextField">
+            <Default>/var/db/kea/kea-leases6.csv</Default>
+            <Required>Y</Required>
+            <Mask>/^\/[^\s]+$/</Mask>
+            <ValidationMessage>Enter a valid absolute file path</ValidationMessage>
+        </lease6File>
+        <keaConf type="TextField">
+            <Default>/usr/local/etc/kea/kea-dhcp4.conf</Default>
+            <Required>Y</Required>
+            <Mask>/^\/[^\s]+$/</Mask>
+            <ValidationMessage>Enter a valid absolute file path</ValidationMessage>
+        </keaConf>
+        <ttl type="IntegerField">
+            <Default>300</Default>
+            <Required>Y</Required>
+            <MinimumValue>60</MinimumValue>
+            <MaximumValue>86400</MaximumValue>
+            <ValidationMessage>TTL must be between 60 and 86400 seconds</ValidationMessage>
+        </ttl>
+        <scanInterval type="OptionField">
+            <Default>1</Default>
+            <Required>Y</Required>
+            <OptionValues>
+                <option value="1">1 minute</option>
+                <option value="2">2 minutes</option>
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">60 minutes</option>
+            </OptionValues>
+        </scanInterval>
+    </items>
+</model>

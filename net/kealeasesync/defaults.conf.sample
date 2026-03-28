@@ -1,0 +1,6 @@
+# Copy to defaults.conf and fill in your values
+# Used by: make apply-defaults OPNSENSE_HOST=root@<opnsense>
+DIRECT_DOMAIN="example.local"
+PROXY_DOMAINS="proxy1.example.com proxy2.example.com"
+PROXY_IPV4="192.168.1.1"
+PROXY_IPV6="fd00::1"

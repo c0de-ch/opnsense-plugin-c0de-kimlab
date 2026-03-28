@@ -1,0 +1,9 @@
+<acl>
+    <page-services-kealeasesync>
+        <name>Services: Kea Lease Sync</name>
+        <patterns>
+            <pattern>ui/kealeasesync/*</pattern>
+            <pattern>api/kealeasesync/*</pattern>
+        </patterns>
+    </page-services-kealeasesync>
+</acl>
