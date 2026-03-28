@@ -30,7 +30,7 @@ function kealeasesync_services()
     $services = array();
 
     $mdl = new \OPNsense\KeaLeaseSync\KeaLeaseSync();
-    if ((string)$mdl->enabled == '1') {
+    if ((string)$mdl->general->enabled == '1') {
         $services[] = array(
             'description' => gettext('Kea Lease DNS Sync'),
             'configd' => array(
@@ -53,7 +53,7 @@ function kealeasesync_configure()
 function kealeasesync_configure_do($verbose = false)
 {
     $mdl = new \OPNsense\KeaLeaseSync\KeaLeaseSync();
-    if ((string)$mdl->enabled == '1') {
+    if ((string)$mdl->general->enabled == '1') {
         if ($verbose) {
             echo 'Configuring Kea Lease Sync...';
         }

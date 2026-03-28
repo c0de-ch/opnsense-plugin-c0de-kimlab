@@ -3,6 +3,7 @@
     <version>1.0.0</version>
     <description>Kea Lease DNS Sync settings</description>
     <items>
+        <general>
         <enabled type="BooleanField">
             <Default>0</Default>
             <Required>Y</Required>
@@ -53,17 +54,18 @@
             <ValidationMessage>TTL must be between 60 and 86400 seconds</ValidationMessage>
         </ttl>
         <scanInterval type="OptionField">
-            <Default>1</Default>
+            <Default>i1</Default>
             <Required>Y</Required>
             <OptionValues>
-                <option value="1">1 minute</option>
-                <option value="2">2 minutes</option>
-                <option value="5">5 minutes</option>
-                <option value="10">10 minutes</option>
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="60">60 minutes</option>
+                <i1>1 minute</i1>
+                <i2>2 minutes</i2>
+                <i5>5 minutes</i5>
+                <i10>10 minutes</i10>
+                <i15>15 minutes</i15>
+                <i30>30 minutes</i30>
+                <i60>60 minutes</i60>
             </OptionValues>
         </scanInterval>
+        </general>
     </items>
 </model>

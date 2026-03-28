@@ -36,11 +36,11 @@ class SettingsController extends ApiMutableModelControllerBase
 
     public function getAction()
     {
-        return $this->getBase('kealeasesync', 'kealeasesync');
+        return $this->getBase('general', 'general');
     }
 
     public function setAction()
     {
-        return $this->setBase('kealeasesync', 'kealeasesync');
+        return $this->setBase('general', 'general');
     }
 }
