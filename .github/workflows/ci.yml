@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate XML files
+        run: |
+          echo "Validating XML files..."
+          ERRORS=0
+          for f in $(find net/ -name '*.xml'); do
+            if ! xmllint --noout "$f" 2>/dev/null; then
+              echo "FAIL: $f"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  OK: $f"
+            fi
+          done
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "${ERRORS} XML file(s) failed validation"
+            exit 1
+          fi
+
+      - name: Validate PHP syntax
+        run: |
+          echo "Validating PHP files..."
+          ERRORS=0
+          for f in $(find net/ -name '*.php'); do
+            if ! php -l "$f" 2>/dev/null; then
+              echo "FAIL: $f"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  OK: $f"
+            fi
+          done
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "${ERRORS} PHP file(s) failed validation"
+            exit 1
+          fi
+
+      - name: Validate Python syntax
+        run: |
+          echo "Validating Python files..."
+          ERRORS=0
+          for f in $(find net/ -name '*.py'); do
+            if ! python3 -m py_compile "$f" 2>/dev/null; then
+              echo "FAIL: $f"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  OK: $f"
+            fi
+          done
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "${ERRORS} Python file(s) failed validation"
+            exit 1
+          fi
+
+      - name: Validate shell scripts
+        run: |
+          echo "Validating shell scripts..."
+          ERRORS=0
+          for f in $(find net/ -name '*.sh'); do
+            if ! bash -n "$f" 2>/dev/null; then
+              echo "FAIL: $f"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  OK: $f"
+            fi
+          done
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "${ERRORS} shell script(s) failed validation"
+            exit 1
+          fi
+
+      - name: Check file structure
+        run: |
+          echo "Checking required files..."
+          REQUIRED=(
+            "net/kealeasesync/Makefile"
+            "net/kealeasesync/pkg-descr"
+            "net/kealeasesync/src/etc/inc/plugins.inc.d/kealeasesync.inc"
+            "net/kealeasesync/src/opnsense/mvc/app/models/OPNsense/KeaLeaseSync/KeaLeaseSync.xml"
+            "net/kealeasesync/src/opnsense/mvc/app/models/OPNsense/KeaLeaseSync/KeaLeaseSync.php"
+            "net/kealeasesync/src/opnsense/mvc/app/controllers/OPNsense/KeaLeaseSync/Api/SettingsController.php"
+            "net/kealeasesync/src/opnsense/mvc/app/controllers/OPNsense/KeaLeaseSync/Api/ServiceController.php"
+            "net/kealeasesync/src/opnsense/scripts/OPNsense/KeaLeaseSync/kea-lease-sync.sh"
+            "net/kealeasesync/src/opnsense/service/conf/actions.d/actions_kealeasesync.conf"
+          )
+          MISSING=0
+          for f in "${REQUIRED[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then
+            echo "${MISSING} required file(s) missing"
+            exit 1
+          fi
+          echo "All required files present."

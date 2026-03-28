@@ -23,6 +23,18 @@ Includes automatic PTR records, stale record cleanup, and a dashboard widget wit
 - ARP-based online/offline detection
 - Two-tier defaults: safe distribution defaults in model, personal values via gitignored `defaults.conf`
 
+## Install from Release
+
+Download the latest release tarball and install directly on OPNsense:
+
+```sh
+# On OPNsense (as root) — one-liner:
+curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.tar.gz \
+  | tar -xz -C /tmp && sh /tmp/os-kealeasesync-1.0.0/install.sh
+```
+
+Or manually: download `os-kealeasesync-<version>.tar.gz` from [Releases](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases), copy to OPNsense, extract, and run `install.sh`.
+
 ## Prerequisites
 
 - OPNsense 24.7+ with **Kea DHCP** and **Unbound DNS** enabled
@@ -100,8 +112,16 @@ The widget shows synced hosts in a table or SVG network map, with online/offline
 
 ## Uninstall
 
+If installed via release tarball:
 ```sh
-ssh root@<opnsense>
+sh /tmp/os-kealeasesync-*/uninstall.sh
+# or manually from OPNsense:
+curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.tar.gz \
+  | tar -xz -C /tmp && sh /tmp/os-kealeasesync-1.0.0/uninstall.sh
+```
+
+If installed via `pkg`:
+```sh
 pkg remove os-kealeasesync
 service configd restart
 ```
@@ -142,6 +162,17 @@ net/kealeasesync/
             ├── KeaLeaseSync.js
             └── Metadata/KeaLeaseSync.xml
 ```
+
+## Versioning
+
+This project uses [semantic versioning](https://semver.org/). Releases are built automatically via GitHub Actions when a tag is pushed:
+
+```sh
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+This triggers the release workflow which builds the distribution tarball and creates a GitHub Release with install instructions.
 
 ## License
 

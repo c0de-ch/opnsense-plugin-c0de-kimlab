@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build distribution tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DIST_NAME="os-kealeasesync-${VERSION}"
+          STAGING="/tmp/${DIST_NAME}"
+
+          # Create staging directory with OPNsense install layout
+          mkdir -p "${STAGING}/usr/local"
+
+          # Copy plugin files into install prefix
+          cp -R net/kealeasesync/src/etc "${STAGING}/usr/local/"
+          cp -R net/kealeasesync/src/opnsense "${STAGING}/usr/local/"
+
+          # Include metadata at the root
+          cp net/kealeasesync/pkg-descr "${STAGING}/"
+          cp net/kealeasesync/Makefile "${STAGING}/"
+
+          # Create install script
+          cat > "${STAGING}/install.sh" << 'INSTALL_EOF'
+          #!/bin/sh
+          set -e
+          PREFIX="${1:-/usr/local}"
+          SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+          echo "Installing os-kealeasesync to ${PREFIX}..."
+
+          # Copy files preserving directory structure
+          cp -R "${SCRIPT_DIR}/usr/local/etc" "${PREFIX}/"
+          cp -R "${SCRIPT_DIR}/usr/local/opnsense" "${PREFIX}/"
+
+          # Set permissions on scripts
+          chmod +x "${PREFIX}/opnsense/scripts/OPNsense/KeaLeaseSync/"*.sh
+          chmod +x "${PREFIX}/opnsense/scripts/OPNsense/KeaLeaseSync/"*.py
+
+          echo "Restarting configd..."
+          service configd restart
+
+          echo ""
+          echo "Done. Configure the plugin at Services > Kea Lease Sync."
+          INSTALL_EOF
+          chmod +x "${STAGING}/install.sh"
+
+          # Create uninstall script
+          cat > "${STAGING}/uninstall.sh" << 'UNINSTALL_EOF'
+          #!/bin/sh
+          set -e
+          PREFIX="${1:-/usr/local}"
+
+          echo "Removing os-kealeasesync from ${PREFIX}..."
+
+          rm -f  "${PREFIX}/etc/inc/plugins.inc.d/kealeasesync.inc"
+          rm -rf "${PREFIX}/opnsense/mvc/app/controllers/OPNsense/KeaLeaseSync"
+          rm -rf "${PREFIX}/opnsense/mvc/app/models/OPNsense/KeaLeaseSync"
+          rm -rf "${PREFIX}/opnsense/mvc/app/views/OPNsense/KeaLeaseSync"
+          rm -rf "${PREFIX}/opnsense/scripts/OPNsense/KeaLeaseSync"
+          rm -f  "${PREFIX}/opnsense/service/conf/actions.d/actions_kealeasesync.conf"
+          rm -rf "${PREFIX}/opnsense/service/templates/OPNsense/KeaLeaseSync"
+          rm -f  "${PREFIX}/opnsense/www/js/widgets/KeaLeaseSync.js"
+          rm -f  "${PREFIX}/opnsense/www/js/widgets/Metadata/KeaLeaseSync.xml"
+          rm -rf "${PREFIX}/etc/kealeasesync"
+          rm -rf /var/run/kealeasesync
+
+          service configd restart
+          echo "Done."
+          UNINSTALL_EOF
+          chmod +x "${STAGING}/uninstall.sh"
+
+          # Create tarball
+          tar -czf "/tmp/${DIST_NAME}.tar.gz" -C /tmp "${DIST_NAME}"
+
+          # Also create a source tarball
+          tar -czf "/tmp/${DIST_NAME}-src.tar.gz" \
+            --transform "s|^|${DIST_NAME}-src/|" \
+            net/kealeasesync/ README.md .gitignore
+
+          mv /tmp/${DIST_NAME}.tar.gz /tmp/${DIST_NAME}-src.tar.gz .
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag if it exists
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ "$PREV_TAG" = "${GITHUB_REF#refs/tags/}" ] || [ -z "$PREV_TAG" ]; then
+            # First release — list all commits
+            CHANGES=$(git log --oneline --no-decorate)
+          else
+            CHANGES=$(git log --oneline --no-decorate "${PREV_TAG}..HEAD")
+          fi
+
+          # Write to file for the release body
+          cat > /tmp/changelog.md << CHANGELOG_EOF
+          ## Installation
+
+          ### Quick install (SSH to OPNsense as root)
+          \`\`\`sh
+          curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/${GITHUB_REF#refs/tags/}/os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz | tar -xz -C /tmp
+          sh /tmp/os-kealeasesync-${{ steps.version.outputs.version }}/install.sh
+          \`\`\`
+
+          ### Manual install
+          1. Download \`os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz\`
+          2. Copy to OPNsense: \`scp os-kealeasesync-*.tar.gz root@<opnsense>:/tmp/\`
+          3. Extract and install:
+          \`\`\`sh
+          cd /tmp && tar -xzf os-kealeasesync-*.tar.gz
+          sh /tmp/os-kealeasesync-${{ steps.version.outputs.version }}/install.sh
+          \`\`\`
+
+          ## Changes
+
+          ${CHANGES}
+          CHANGELOG_EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: /tmp/changelog.md
+          files: |
+            os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz
+            os-kealeasesync-${{ steps.version.outputs.version }}-src.tar.gz
+          generate_release_notes: false
