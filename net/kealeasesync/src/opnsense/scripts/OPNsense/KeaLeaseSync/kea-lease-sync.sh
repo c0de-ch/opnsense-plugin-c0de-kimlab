@@ -148,6 +148,8 @@ if [ -f "$LEASE6_FILE" ]; then
             continue
         fi
         hostname=$(clean_hostname "$hostname") || continue
+        # Remove existing entry for same hostname (lease overrides static, dedup dynamic)
+        sed -i '' "/^AAAA|${hostname}|/d" "$CURRENT_LEASES" 2>/dev/null
         echo "AAAA|${hostname}|${address}|dynamic" >> "$CURRENT_LEASES"
     done
 fi
