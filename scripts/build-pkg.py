@@ -85,8 +85,8 @@ def build_pkg(version, src_dir, output_file):
         "files": files_dict,
         "directories": dirs_dict,
         "scripts": {
-            "post-install": "service configd restart || true\necho 'os-kealeasesync installed. Configure at Services > Kea Lease Sync.'",
-            "post-deinstall": "service configd restart || true",
+            "post-install": "service configd restart || true\nconfigctl template reload OPNsense/KeaLeaseSync || true\n/usr/local/etc/rc.configure_firmware || true\necho 'os-kealeasesync installed. Configure at Services > Kea Lease Sync.'",
+            "post-deinstall": "service configd restart || true\n/usr/local/etc/rc.configure_firmware || true",
         },
     }
 
