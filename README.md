@@ -25,15 +25,16 @@ Includes automatic PTR records, stale record cleanup, and a dashboard widget wit
 
 ## Install from Release
 
-Download the latest release tarball and install directly on OPNsense:
+Download the `.pkg` from the [latest release](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest) and install directly on OPNsense:
 
 ```sh
-# On OPNsense (as root) — one-liner:
-curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.tar.gz \
-  | tar -xz -C /tmp && sh /tmp/os-kealeasesync-1.0.0/install.sh
+# On OPNsense (as root):
+fetch -o /tmp/os-kealeasesync.pkg \
+  https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.pkg
+pkg install /tmp/os-kealeasesync.pkg
 ```
 
-Or manually: download `os-kealeasesync-<version>.tar.gz` from [Releases](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases), copy to OPNsense, extract, and run `install.sh`.
+A `.tar.gz` with manual install/uninstall scripts is also available on each release.
 
 ## Prerequisites
 
@@ -112,18 +113,8 @@ The widget shows synced hosts in a table or SVG network map, with online/offline
 
 ## Uninstall
 
-If installed via release tarball:
-```sh
-sh /tmp/os-kealeasesync-*/uninstall.sh
-# or manually from OPNsense:
-curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.tar.gz \
-  | tar -xz -C /tmp && sh /tmp/os-kealeasesync-1.0.0/uninstall.sh
-```
-
-If installed via `pkg`:
 ```sh
 pkg remove os-kealeasesync
-service configd restart
 ```
 
 ## File Structure
@@ -172,7 +163,7 @@ git tag v1.1.0
 git push origin v1.1.0
 ```
 
-This triggers the release workflow which builds the distribution tarball and creates a GitHub Release with install instructions.
+This triggers the release workflow which builds the `.pkg`, distribution tarball, and creates a GitHub Release.
 
 ## License
 

@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
@@ -21,24 +23,140 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${TAG}" >> "$GITHUB_OUTPUT"
 
+      - name: Build FreeBSD pkg
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PKG_NAME="os-kealeasesync"
+          PKG_FILE="${PKG_NAME}-${VERSION}.pkg"
+          STAGING="/tmp/pkg-staging"
+          PREFIX="/usr/local"
+
+          sudo apt-get update && sudo apt-get install -y zstd
+
+          # Stage files in their install paths
+          mkdir -p "${STAGING}${PREFIX}"
+          cp -R net/kealeasesync/src/etc "${STAGING}${PREFIX}/"
+          cp -R net/kealeasesync/src/opnsense "${STAGING}${PREFIX}/"
+
+          # Fix permissions
+          find "${STAGING}" -name '*.sh' -exec chmod 755 {} +
+          find "${STAGING}" -name '*.py' -exec chmod 755 {} +
+
+          # Collect file list with sha256 hashes
+          FILES_JSON="{"
+          FLATSIZE=0
+          FIRST=true
+          while IFS= read -r file; do
+            rel="/${file#${STAGING}/}"
+            size=$(stat -c%s "$file")
+            hash=$(sha256sum "$file" | cut -d' ' -f1)
+            FLATSIZE=$((FLATSIZE + size))
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              FILES_JSON="${FILES_JSON},"
+            fi
+            FILES_JSON="${FILES_JSON}\"${rel}\":\"1\$${hash}\""
+          done < <(find "${STAGING}" -type f | sort)
+          FILES_JSON="${FILES_JSON}}"
+
+          # Collect directories
+          DIRS_JSON="{"
+          FIRST=true
+          while IFS= read -r dir; do
+            rel="/${dir#${STAGING}/}"
+            [ "$rel" = "/" ] && continue
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              DIRS_JSON="${DIRS_JSON},"
+            fi
+            DIRS_JSON="${DIRS_JSON}\"${rel}\":\"y\""
+          done < <(find "${STAGING}" -type d | sort)
+          DIRS_JSON="${DIRS_JSON}}"
+
+          # Read description
+          DESC=$(cat net/kealeasesync/pkg-descr)
+
+          # Create +COMPACT_MANIFEST
+          cat > "${STAGING}/+COMPACT_MANIFEST" << MANIFEST_EOF
+          {
+            "name": "${PKG_NAME}",
+            "version": "${VERSION}",
+            "origin": "net/kealeasesync",
+            "comment": "Sync Kea DHCP leases to Unbound DNS",
+            "maintainer": "kim@kimlab.ch",
+            "www": "https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab",
+            "abi": "FreeBSD:*",
+            "arch": "freebsd:*",
+            "prefix": "${PREFIX}",
+            "flatsize": ${FLATSIZE},
+            "desc": $(echo "$DESC" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+            "categories": ["net"],
+            "licenselogic": "single",
+            "licenses": ["BSD2CLAUSE"],
+            "deps": {
+              "os-unbound": {"origin": "dns/unbound", "version": "0"}
+            }
+          }
+          MANIFEST_EOF
+
+          # Create +MANIFEST (compact manifest + files + directories + scripts)
+          cat > "${STAGING}/+MANIFEST" << MANIFEST_EOF
+          {
+            "name": "${PKG_NAME}",
+            "version": "${VERSION}",
+            "origin": "net/kealeasesync",
+            "comment": "Sync Kea DHCP leases to Unbound DNS",
+            "maintainer": "kim@kimlab.ch",
+            "www": "https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab",
+            "abi": "FreeBSD:*",
+            "arch": "freebsd:*",
+            "prefix": "${PREFIX}",
+            "flatsize": ${FLATSIZE},
+            "desc": $(echo "$DESC" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+            "categories": ["net"],
+            "licenselogic": "single",
+            "licenses": ["BSD2CLAUSE"],
+            "deps": {
+              "os-unbound": {"origin": "dns/unbound", "version": "0"}
+            },
+            "files": ${FILES_JSON},
+            "directories": ${DIRS_JSON},
+            "scripts": {
+              "post-install": "service configd restart || true\necho 'os-kealeasesync installed. Configure at Services > Kea Lease Sync.'",
+              "post-deinstall": "service configd restart || true"
+            }
+          }
+          MANIFEST_EOF
+
+          # Build the pkg: tar with manifests first, then files, compressed with zstd
+          cd "${STAGING}"
+          tar -cf "/tmp/${PKG_FILE}" \
+            --zstd \
+            +COMPACT_MANIFEST \
+            +MANIFEST \
+            --exclude='+COMPACT_MANIFEST' \
+            --exclude='+MANIFEST' \
+            -C "${STAGING}" \
+            usr
+          cd -
+
+          mv "/tmp/${PKG_FILE}" .
+          echo "Built ${PKG_FILE} ($(stat -c%s "${PKG_FILE}") bytes)"
+
       - name: Build distribution tarball
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DIST_NAME="os-kealeasesync-${VERSION}"
           STAGING="/tmp/${DIST_NAME}"
 
-          # Create staging directory with OPNsense install layout
           mkdir -p "${STAGING}/usr/local"
-
-          # Copy plugin files into install prefix
           cp -R net/kealeasesync/src/etc "${STAGING}/usr/local/"
           cp -R net/kealeasesync/src/opnsense "${STAGING}/usr/local/"
-
-          # Include metadata at the root
           cp net/kealeasesync/pkg-descr "${STAGING}/"
           cp net/kealeasesync/Makefile "${STAGING}/"
 
-          # Create install script
           cat > "${STAGING}/install.sh" << 'INSTALL_EOF'
           #!/bin/sh
           set -e
@@ -46,31 +164,20 @@ jobs:
           SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
           echo "Installing os-kealeasesync to ${PREFIX}..."
-
-          # Copy files preserving directory structure
           cp -R "${SCRIPT_DIR}/usr/local/etc" "${PREFIX}/"
           cp -R "${SCRIPT_DIR}/usr/local/opnsense" "${PREFIX}/"
-
-          # Set permissions on scripts
           chmod +x "${PREFIX}/opnsense/scripts/OPNsense/KeaLeaseSync/"*.sh
           chmod +x "${PREFIX}/opnsense/scripts/OPNsense/KeaLeaseSync/"*.py
-
-          echo "Restarting configd..."
           service configd restart
-
-          echo ""
-          echo "Done. Configure the plugin at Services > Kea Lease Sync."
+          echo "Done. Configure at Services > Kea Lease Sync."
           INSTALL_EOF
           chmod +x "${STAGING}/install.sh"
 
-          # Create uninstall script
           cat > "${STAGING}/uninstall.sh" << 'UNINSTALL_EOF'
           #!/bin/sh
           set -e
           PREFIX="${1:-/usr/local}"
-
-          echo "Removing os-kealeasesync from ${PREFIX}..."
-
+          echo "Removing os-kealeasesync..."
           rm -f  "${PREFIX}/etc/inc/plugins.inc.d/kealeasesync.inc"
           rm -rf "${PREFIX}/opnsense/mvc/app/controllers/OPNsense/KeaLeaseSync"
           rm -rf "${PREFIX}/opnsense/mvc/app/models/OPNsense/KeaLeaseSync"
@@ -82,16 +189,12 @@ jobs:
           rm -f  "${PREFIX}/opnsense/www/js/widgets/Metadata/KeaLeaseSync.xml"
           rm -rf "${PREFIX}/etc/kealeasesync"
           rm -rf /var/run/kealeasesync
-
           service configd restart
           echo "Done."
           UNINSTALL_EOF
           chmod +x "${STAGING}/uninstall.sh"
 
-          # Create tarball
           tar -czf "/tmp/${DIST_NAME}.tar.gz" -C /tmp "${DIST_NAME}"
-
-          # Also create a source tarball
           tar -czf "/tmp/${DIST_NAME}-src.tar.gz" \
             --transform "s|^|${DIST_NAME}-src/|" \
             net/kealeasesync/ README.md .gitignore
@@ -99,34 +202,43 @@ jobs:
           mv /tmp/${DIST_NAME}.tar.gz /tmp/${DIST_NAME}-src.tar.gz .
 
       - name: Generate changelog
-        id: changelog
         run: |
-          # Get previous tag if it exists
-          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
-          if [ "$PREV_TAG" = "${GITHUB_REF#refs/tags/}" ] || [ -z "$PREV_TAG" ]; then
-            # First release — list all commits
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG_NAME}$" | head -1)
+          if [ -z "$PREV_TAG" ]; then
             CHANGES=$(git log --oneline --no-decorate)
           else
             CHANGES=$(git log --oneline --no-decorate "${PREV_TAG}..HEAD")
           fi
 
-          # Write to file for the release body
           cat > /tmp/changelog.md << CHANGELOG_EOF
-          ## Installation
+          ## Install
 
-          ### Quick install (SSH to OPNsense as root)
+          ### Option 1: pkg install (recommended)
           \`\`\`sh
-          curl -L https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/${GITHUB_REF#refs/tags/}/os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz | tar -xz -C /tmp
-          sh /tmp/os-kealeasesync-${{ steps.version.outputs.version }}/install.sh
+          # Copy to OPNsense and install
+          scp os-kealeasesync-${VERSION}.pkg root@<opnsense>:/tmp/
+          ssh root@<opnsense> "pkg install /tmp/os-kealeasesync-${VERSION}.pkg"
           \`\`\`
 
-          ### Manual install
-          1. Download \`os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz\`
-          2. Copy to OPNsense: \`scp os-kealeasesync-*.tar.gz root@<opnsense>:/tmp/\`
-          3. Extract and install:
+          Or as a one-liner on OPNsense:
           \`\`\`sh
-          cd /tmp && tar -xzf os-kealeasesync-*.tar.gz
-          sh /tmp/os-kealeasesync-${{ steps.version.outputs.version }}/install.sh
+          fetch -o /tmp/os-kealeasesync-${VERSION}.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/${TAG_NAME}/os-kealeasesync-${VERSION}.pkg
+          pkg install /tmp/os-kealeasesync-${VERSION}.pkg
+          \`\`\`
+
+          ### Option 2: tarball install
+          \`\`\`sh
+          fetch -o /tmp/os-kealeasesync.tar.gz https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/${TAG_NAME}/os-kealeasesync-${VERSION}.tar.gz
+          tar -xzf /tmp/os-kealeasesync.tar.gz -C /tmp
+          sh /tmp/os-kealeasesync-${VERSION}/install.sh
+          \`\`\`
+
+          ### Uninstall
+          \`\`\`sh
+          pkg remove os-kealeasesync
           \`\`\`
 
           ## Changes
@@ -139,6 +251,7 @@ jobs:
         with:
           body_path: /tmp/changelog.md
           files: |
+            os-kealeasesync-${{ steps.version.outputs.version }}.pkg
             os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz
             os-kealeasesync-${{ steps.version.outputs.version }}-src.tar.gz
           generate_release_notes: false
