@@ -1,5 +1,5 @@
 {#
- # Copyright (C) 2024 kim@kimlab.ch
+ # Copyright (C) 2024 kim@c0de.ch
  # All rights reserved.
  #}
 

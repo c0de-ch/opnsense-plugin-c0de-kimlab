@@ -69,7 +69,7 @@ def build_pkg(version, src_dir, output_file):
         "version": version,
         "origin": "net/kealeasesync",
         "comment": "Sync Kea DHCP leases to Unbound DNS",
-        "maintainer": "kim@kimlab.ch",
+        "maintainer": "kim@c0de.ch",
         "www": "https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab",
         "abi": "FreeBSD:*",
         "arch": "freebsd:*",

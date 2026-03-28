@@ -2,7 +2,7 @@ PLUGIN_NAME=		kealeasesync
 PLUGIN_VERSION=		1.0
 PLUGIN_REVISION=	1
 PLUGIN_COMMENT=		Sync Kea DHCP leases to Unbound DNS
-PLUGIN_MAINTAINER=	kim@kimlab.ch
+PLUGIN_MAINTAINER=	kim@c0de.ch
 PLUGIN_WWW=		https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab
 PLUGIN_DEPENDS=		os-unbound
 
