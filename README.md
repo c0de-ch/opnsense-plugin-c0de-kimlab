@@ -39,7 +39,7 @@ Download the `.pkg` from the [latest release](https://github.com/c0de-ch/opnsens
 3. Paste:
 
 ```sh
-fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.1/os-kealeasesync-1.0.1.pkg
 pkg install /tmp/os-kealeasesync.pkg
 service configd restart
 ```
@@ -48,7 +48,7 @@ service configd restart
 
 ```sh
 ssh root@<opnsense>
-fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.1/os-kealeasesync-1.0.1.pkg
 pkg install /tmp/os-kealeasesync.pkg
 ```
 
@@ -56,7 +56,7 @@ pkg install /tmp/os-kealeasesync.pkg
 
 ```sh
 # Download and copy the .pkg
-curl -Lo os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+curl -Lo os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.1/os-kealeasesync-1.0.1.pkg
 scp os-kealeasesync.pkg root@<opnsense>:/tmp/
 
 # Install
