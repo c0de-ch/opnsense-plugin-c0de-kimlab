@@ -11,7 +11,6 @@
             $('.selectpicker').selectpicker('refresh');
         });
 
-        updateServiceControlUI('kealeasesync');
 
         // Save settings
         $("#saveAct").click(function () {
@@ -19,8 +18,7 @@
                 $("#saveAct_progress").addClass("fa fa-spinner fa-pulse");
                 ajaxCall('/api/kealeasesync/service/apply', {}, function (data, status) {
                     $("#saveAct_progress").removeClass("fa fa-spinner fa-pulse");
-                    updateServiceControlUI('kealeasesync');
-                    loadStatus();
+                                loadStatus();
                 });
             });
         });
