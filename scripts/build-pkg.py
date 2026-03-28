@@ -110,11 +110,14 @@ def build_pkg(version, src_dir, output_file):
         m_info.size = len(m_data)
         tar.addfile(m_info, fileobj=__import__("io").BytesIO(m_data))
 
-        # Add files at their install paths (without leading /)
+        # Add files at their absolute install paths (must have leading /)
+        # Python's tarfile strips leading / in add() and gettarinfo(),
+        # so we build TarInfo manually and force the name after creation.
         for install_path, local_path in sorted(files.items()):
-            # Strip leading / so tar entry is "usr/local/..." not "/usr/local/..."
-            arcname = install_path.lstrip("/")
-            tar.add(local_path, arcname=arcname)
+            info = tar.gettarinfo(local_path, arcname=install_path)
+            info.name = install_path  # force absolute path with leading /
+            with open(local_path, "rb") as f:
+                tar.addfile(info, fileobj=f)
 
     # Compress with zstd
     subprocess.run(["zstd", "-q", "--rm", "-o", output_file, tmp_tar], check=True)
