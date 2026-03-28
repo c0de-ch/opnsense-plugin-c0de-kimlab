@@ -125,8 +125,12 @@ cp "$STATIC_LEASES" "$CURRENT_LEASES"
 DYNAMIC_COUNT=0
 if [ -f "$LEASE4_FILE" ]; then
     tail -n +2 "$LEASE4_FILE" | while IFS=, read -r address hwaddr client_id valid_lifetime expire subnet_id fqdn_fwd fqdn_rev hostname state rest; do
-        [ -z "$hostname" ] && continue
         [ "$state" != "0" ] && continue
+        # Generate hostname from MAC if empty
+        if [ -z "$hostname" ] && [ -n "$hwaddr" ]; then
+            hostname="dhcp-$(echo "$hwaddr" | tr -d ':')"
+        fi
+        [ -z "$hostname" ] && continue
         if [ -n "$expire" ] && [ "$expire" -lt "$NOW" ] 2>/dev/null; then
             continue
         fi
@@ -141,8 +145,14 @@ fi
 # ── Step 3: Parse IPv6 leases ────────────────────────────────
 if [ -f "$LEASE6_FILE" ]; then
     tail -n +2 "$LEASE6_FILE" | while IFS=, read -r address duid valid_lifetime expire subnet_id pref_lifetime lease_type iaid prefix_len fqdn_fwd fqdn_rev hostname hwaddr state rest; do
-        [ -z "$hostname" ] && continue
         [ "$state" != "0" ] && continue
+        # Generate hostname from MAC or DUID if empty
+        if [ -z "$hostname" ] && [ -n "$hwaddr" ]; then
+            hostname="dhcp-$(echo "$hwaddr" | tr -d ':')"
+        elif [ -z "$hostname" ] && [ -n "$duid" ]; then
+            hostname="dhcp-$(echo "$duid" | tr -d ':' | tail -c 12)"
+        fi
+        [ -z "$hostname" ] && continue
         [ "$lease_type" != "0" ] && continue
         if [ -n "$expire" ] && [ "$expire" -lt "$NOW" ] 2>/dev/null; then
             continue
