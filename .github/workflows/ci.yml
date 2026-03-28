@@ -12,33 +12,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils php-cli
+
       - name: Validate XML files
         run: |
           echo "Validating XML files..."
           ERRORS=0
           for f in $(find net/ -name '*.xml'); do
-            if ! xmllint --noout "$f" 2>/dev/null; then
-              echo "FAIL: $f"
+            if ! xmllint --noout "$f" 2>&1; then
               ERRORS=$((ERRORS + 1))
-            else
-              echo "  OK: $f"
             fi
           done
           if [ "$ERRORS" -gt 0 ]; then
             echo "${ERRORS} XML file(s) failed validation"
             exit 1
           fi
+          echo "All XML files valid."
 
       - name: Validate PHP syntax
         run: |
           echo "Validating PHP files..."
           ERRORS=0
           for f in $(find net/ -name '*.php'); do
-            if ! php -l "$f" 2>/dev/null; then
-              echo "FAIL: $f"
+            if ! php -l "$f"; then
               ERRORS=$((ERRORS + 1))
-            else
-              echo "  OK: $f"
             fi
           done
           if [ "$ERRORS" -gt 0 ]; then
