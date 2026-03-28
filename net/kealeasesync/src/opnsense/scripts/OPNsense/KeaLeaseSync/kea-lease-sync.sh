@@ -142,6 +142,32 @@ if [ -f "$LEASE4_FILE" ]; then
     DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
 fi
 
+# ── Step 2b: Fetch MikroTik DHCP leases (IPv4 only) ──────────
+MIKROTIK_COUNT=0
+if [ "$MIKROTIK_ENABLED" = "1" ] && [ -n "$MIKROTIK_HOST" ] && [ -n "$MIKROTIK_USER" ]; then
+    MIKROTIK_TEMP="${RUN_DIR}/sync.mikrotik.$$"
+    trap 'rm -f "$STATIC_LEASES" "$CURRENT_LEASES" "$MIKROTIK_TEMP"' EXIT
+    MIKROTIK_PASSWORD="$MIKROTIK_PASSWORD" /usr/local/bin/python3 \
+        /usr/local/opnsense/scripts/OPNsense/KeaLeaseSync/fetch_mikrotik_leases.py \
+        --host "$MIKROTIK_HOST" \
+        --port "${MIKROTIK_PORT:-443}" \
+        --user "$MIKROTIK_USER" \
+        --verify-ssl "${MIKROTIK_VERIFY_SSL:-0}" > "$MIKROTIK_TEMP" 2>/dev/null
+
+    if [ -s "$MIKROTIK_TEMP" ]; then
+        while IFS='|' read -r rtype hostname ip htype; do
+            hostname=$(clean_hostname "$hostname") || continue
+            # Only add if hostname not already present from Kea
+            if ! grep -q "^A|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
+                echo "${rtype}|${hostname}|${ip}|${htype}" >> "$CURRENT_LEASES"
+                MIKROTIK_COUNT=$((MIKROTIK_COUNT + 1))
+            fi
+        done < "$MIKROTIK_TEMP"
+        log_info "MikroTik: fetched ${MIKROTIK_COUNT} leases from ${MIKROTIK_HOST}"
+    fi
+    rm -f "$MIKROTIK_TEMP"
+fi
+
 # ── Step 3: Parse IPv6 leases ────────────────────────────────
 if [ -f "$LEASE6_FILE" ]; then
     tail -n +2 "$LEASE6_FILE" | while IFS=, read -r address duid valid_lifetime expire subnet_id pref_lifetime lease_type iaid prefix_len fqdn_fwd fqdn_rev hostname hwaddr state rest; do
@@ -247,6 +273,7 @@ cat > "$STATUS_FILE" <<STATUSEOF
     "hosts_removed": ${REMOVED},
     "static_count": ${STATIC_COUNT},
     "dynamic_count": ${DYNAMIC_COUNT},
+    "mikrotik_count": ${MIKROTIK_COUNT},
     "duration": "${DURATION}s",
     "direct_domain": "${DIRECT_DOMAIN}",
     "proxy_domains": "${PROXY_DOMAINS}"

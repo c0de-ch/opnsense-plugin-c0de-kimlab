@@ -1,6 +1,6 @@
 <model>
     <mount>//OPNsense/KeaLeaseSync</mount>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <description>Kea Lease DNS Sync settings</description>
     <items>
         <general>
@@ -66,6 +66,34 @@
                 <i60>60 minutes</i60>
             </OptionValues>
         </scanInterval>
+        <mikrotikEnabled type="BooleanField">
+            <Default>0</Default>
+            <Required>Y</Required>
+        </mikrotikEnabled>
+        <mikrotikHost type="TextField">
+            <Required>N</Required>
+            <Mask>/^[a-zA-Z0-9.\-:]*$/</Mask>
+            <ValidationMessage>Enter a valid hostname or IP address</ValidationMessage>
+        </mikrotikHost>
+        <mikrotikPort type="IntegerField">
+            <Default>443</Default>
+            <Required>N</Required>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+            <ValidationMessage>Port must be between 1 and 65535</ValidationMessage>
+        </mikrotikPort>
+        <mikrotikUser type="TextField">
+            <Required>N</Required>
+            <Mask>/^[a-zA-Z0-9._\-]*$/</Mask>
+            <ValidationMessage>Enter a valid username</ValidationMessage>
+        </mikrotikUser>
+        <mikrotikPassword type="PasswordField">
+            <Required>N</Required>
+        </mikrotikPassword>
+        <mikrotikVerifySSL type="BooleanField">
+            <Default>0</Default>
+            <Required>N</Required>
+        </mikrotikVerifySSL>
         </general>
     </items>
 </model>

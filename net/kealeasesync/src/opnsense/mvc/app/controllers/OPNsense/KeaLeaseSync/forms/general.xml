@@ -62,4 +62,44 @@
         <type>dropdown</type>
         <help>How often the sync runs (in minutes). Add a matching cron job under System &gt; Settings &gt; Cron.</help>
     </field>
+    <field>
+        <type>header</type>
+        <label>MikroTik DHCP Source</label>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikEnabled</id>
+        <label>Enable MikroTik</label>
+        <type>checkbox</type>
+        <help>Fetch DHCP leases from a MikroTik RouterOS device via REST API (requires RouterOS v7.1+)</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikHost</id>
+        <label>MikroTik Host</label>
+        <type>text</type>
+        <help>Hostname or IP address of the MikroTik router</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikPort</id>
+        <label>MikroTik Port</label>
+        <type>text</type>
+        <help>REST API port (default: 443)</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikUser</id>
+        <label>MikroTik Username</label>
+        <type>text</type>
+        <help>Username for MikroTik REST API authentication</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikPassword</id>
+        <label>MikroTik Password</label>
+        <type>password</type>
+        <help>Password for MikroTik REST API authentication</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.mikrotikVerifySSL</id>
+        <label>Verify SSL Certificate</label>
+        <type>checkbox</type>
+        <help>Verify the MikroTik TLS certificate (disable for self-signed certificates)</help>
+    </field>
 </form>

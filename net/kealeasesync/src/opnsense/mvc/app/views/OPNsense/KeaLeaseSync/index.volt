@@ -56,6 +56,9 @@
                 html += '<tr><td><strong>Hosts Removed</strong></td><td>' + (data.hosts_removed || 0) + '</td></tr>';
                 html += '<tr><td><strong>Static Reservations</strong></td><td>' + (data.static_count || 0) + '</td></tr>';
                 html += '<tr><td><strong>Dynamic Leases</strong></td><td>' + (data.dynamic_count || 0) + '</td></tr>';
+                if (data.mikrotik_count > 0) {
+                    html += '<tr><td><strong>MikroTik Leases</strong></td><td>' + data.mikrotik_count + '</td></tr>';
+                }
                 html += '<tr><td><strong>Duration</strong></td><td>' + (data.duration || '-') + '</td></tr>';
                 html += '</table>';
                 $("#sync_status").html(html);
