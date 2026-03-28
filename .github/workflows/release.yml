@@ -141,3 +141,8 @@ jobs:
             os-kealeasesync-${{ steps.version.outputs.version }}.tar.gz
             os-kealeasesync-${{ steps.version.outputs.version }}-src.tar.gz
           generate_release_notes: false
+
+      - name: Update package repository
+        run: gh workflow run repo.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
