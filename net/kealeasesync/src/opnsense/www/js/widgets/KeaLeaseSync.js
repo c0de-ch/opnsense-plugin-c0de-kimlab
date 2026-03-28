@@ -3,8 +3,6 @@
  * Table view + SVG radial network map
  */
 
-import BaseTableWidget from "./BaseTableWidget.js";
-
 export default class KeaLeaseSync extends BaseTableWidget {
     constructor() {
         super();
@@ -119,7 +117,7 @@ export default class KeaLeaseSync extends BaseTableWidget {
         }
 
         let html = '<table class="table table-condensed table-striped" style="margin: 0;">';
-        html += '<thead><tr><th>Hostname</th><th>IP</th><th>Type</th><th>Status</th></tr></thead><tbody>';
+        html += '<thead><tr><th style="text-align:left;">Hostname</th><th style="text-align:left;">IP</th><th>Type</th><th>Status</th></tr></thead><tbody>';
 
         hosts.forEach(host => {
             const name = this.escapeHtml(host.hostname);
@@ -131,7 +129,7 @@ export default class KeaLeaseSync extends BaseTableWidget {
                 ? '<i class="fa fa-circle text-success" style="font-size: 8px;"></i>'
                 : '<i class="fa fa-circle text-muted" style="font-size: 8px;"></i>';
 
-            html += `<tr><td>${name}</td><td style="font-family: monospace; font-size: 11px;">${ip}</td><td>${typeBadge}</td><td>${statusDot}</td></tr>`;
+            html += `<tr><td style="text-align:left;">${name}</td><td style="text-align:left; font-family: monospace; font-size: 11px;">${ip}</td><td>${typeBadge}</td><td>${statusDot}</td></tr>`;
         });
 
         html += '</tbody></table>';
