@@ -1,63 +1,63 @@
 <form>
     <field>
-        <id>general.enabled</id>
+        <id>kealeasesync.general.enabled</id>
         <label>Enabled</label>
         <type>checkbox</type>
         <help>Enable Kea Lease DNS Sync</help>
     </field>
     <field>
-        <id>general.directDomain</id>
+        <id>kealeasesync.general.directDomain</id>
         <label>Direct Domain</label>
         <type>text</type>
         <help>Domain for real device IPs (e.g. kimlab.ch)</help>
     </field>
     <field>
-        <id>general.proxyDomains</id>
+        <id>kealeasesync.general.proxyDomains</id>
         <label>Proxy Domains</label>
         <type>text</type>
         <help>Space-separated proxy domains (e.g. lab.kim.li zh.kim.li)</help>
     </field>
     <field>
-        <id>general.proxyIpv4</id>
+        <id>kealeasesync.general.proxyIpv4</id>
         <label>Proxy IPv4</label>
         <type>text</type>
         <help>IPv4 address of the reverse proxy (Caddy)</help>
     </field>
     <field>
-        <id>general.proxyIpv6</id>
+        <id>kealeasesync.general.proxyIpv6</id>
         <label>Proxy IPv6</label>
         <type>text</type>
         <help>IPv6 address of the reverse proxy (Caddy)</help>
     </field>
     <field>
-        <id>general.lease4File</id>
+        <id>kealeasesync.general.lease4File</id>
         <label>Kea IPv4 Lease File</label>
         <type>text</type>
         <help>Path to the Kea DHCPv4 lease file</help>
         <advanced>true</advanced>
     </field>
     <field>
-        <id>general.lease6File</id>
+        <id>kealeasesync.general.lease6File</id>
         <label>Kea IPv6 Lease File</label>
         <type>text</type>
         <help>Path to the Kea DHCPv6 lease file</help>
         <advanced>true</advanced>
     </field>
     <field>
-        <id>general.keaConf</id>
+        <id>kealeasesync.general.keaConf</id>
         <label>Kea Config File</label>
         <type>text</type>
         <help>Path to the Kea DHCPv4 configuration file</help>
         <advanced>true</advanced>
     </field>
     <field>
-        <id>general.ttl</id>
+        <id>kealeasesync.general.ttl</id>
         <label>DNS TTL</label>
         <type>text</type>
         <help>TTL for DNS records in seconds (60-86400)</help>
     </field>
     <field>
-        <id>general.scanInterval</id>
+        <id>kealeasesync.general.scanInterval</id>
         <label>Scan Interval</label>
         <type>dropdown</type>
         <help>How often the sync runs (in minutes). Add a matching cron job under System &gt; Settings &gt; Cron.</help>

@@ -105,11 +105,7 @@ make package
    - File paths (advanced) — Kea lease files and config, pre-filled with standard paths
 3. Click **Save**, then **Sync Now** to test
 
-### Add a cron job
-
-**System > Settings > Cron > Add**:
-- Command: `Kea Lease DNS Sync`
-- Schedule: `*/1 * * * *` (or match your scan interval)
+The cron job is created automatically based on the **Scan Interval** setting.
 
 ### Enable the dashboard widget
 

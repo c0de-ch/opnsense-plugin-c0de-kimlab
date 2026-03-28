@@ -43,6 +43,31 @@ function kealeasesync_services()
     return $services;
 }
 
+function kealeasesync_cron()
+{
+    $jobs = array();
+
+    $mdl = new \OPNsense\KeaLeaseSync\KeaLeaseSync();
+    if ((string)$mdl->general->enabled == '1') {
+        $interval = str_replace('i', '', (string)$mdl->general->scanInterval);
+        if (empty($interval) || $interval == '0') {
+            $interval = '1';
+        }
+        $jobs[] = array(
+            'minutes' => $interval == '1' ? '*' : '*/' . $interval,
+            'hours' => '*',
+            'days' => '*',
+            'months' => '*',
+            'weekdays' => '*',
+            'description' => 'Kea Lease DNS Sync',
+            'command' => 'kealeasesync run',
+            'origin' => 'kealeasesync',
+        );
+    }
+
+    return $jobs;
+}
+
 function kealeasesync_configure()
 {
     return array(

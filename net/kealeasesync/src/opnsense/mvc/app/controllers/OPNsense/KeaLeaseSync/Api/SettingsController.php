@@ -33,14 +33,4 @@ class SettingsController extends ApiMutableModelControllerBase
 {
     protected static $internalModelName = 'kealeasesync';
     protected static $internalModelClass = 'OPNsense\KeaLeaseSync\KeaLeaseSync';
-
-    public function getAction()
-    {
-        return $this->getBase('general', 'general');
-    }
-
-    public function setAction()
-    {
-        return $this->setBase('general', 'general');
-    }
 }
