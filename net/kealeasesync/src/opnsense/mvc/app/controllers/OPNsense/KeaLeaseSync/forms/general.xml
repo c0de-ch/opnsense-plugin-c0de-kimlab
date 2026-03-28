@@ -9,13 +9,13 @@
         <id>kealeasesync.general.directDomain</id>
         <label>Direct Domain</label>
         <type>text</type>
-        <help>Domain for real device IPs (e.g. kimlab.ch)</help>
+        <help>Domain for real device IPs (e.g. direct-domain-example.com)</help>
     </field>
     <field>
         <id>kealeasesync.general.proxyDomains</id>
         <label>Proxy Domains</label>
         <type>text</type>
-        <help>Space-separated proxy domains (e.g. lab.kim.li zh.kim.li)</help>
+        <help>Space-separated proxy domains (e.g. proxy1.example.com proxy2.example.com)</help>
     </field>
     <field>
         <id>kealeasesync.general.proxyIpv4</id>
