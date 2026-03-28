@@ -20,21 +20,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: sudo apt-get update -qq && sudo apt-get install -yqq zstd
-
-      - name: Download all release packages
+      - name: Download latest release package
         run: |
-          mkdir -p repo/All
-          # Download .pkg from every release
+          mkdir -p staging/All
           for tag in $(gh release list --json tagName -q '.[].tagName'); do
             echo "Checking release ${tag}..."
-            gh release download "${tag}" --pattern '*.pkg' --dir repo/All/ --skip-existing 2>/dev/null || true
+            gh release download "${tag}" --pattern '*.pkg' --dir staging/All/ --skip-existing 2>/dev/null || true
           done
-          ls -la repo/All/
 
           # Keep only the latest version of each package
-          cd repo/All
+          cd staging/All
           for name in $(ls *.pkg 2>/dev/null | sed 's/-[0-9].*$//' | sort -u); do
             latest=$(ls ${name}-*.pkg 2>/dev/null | sort -V | tail -1)
             for f in ${name}-*.pkg; do
@@ -45,17 +40,29 @@ jobs:
             done
           done
           cd ../..
-          echo "Final packages:"
-          ls -la repo/All/
+          echo "Packages:"
+          ls -la staging/All/
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Build repository index
-        run: python3 scripts/build-repo.py repo repo
+      - name: Build repository with FreeBSD pkg
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.2"
+          usesh: true
+          copyback: true
+          prepare: |
+            pkg install -y pkg
+          run: |
+            cd staging
+            pkg repo . || { echo "pkg repo failed"; exit 1; }
+            echo "Repository files:"
+            ls -la
+            ls -la All/
 
       - name: Create repo config and index page
         run: |
-          cat > repo/c0de-kimlab.conf << 'REPOCONF'
+          cat > staging/c0de-kimlab.conf << 'REPOCONF'
           c0de-kimlab: {
             url: "https://c0de-ch.github.io/opnsense-plugin-c0de-kimlab",
             enabled: yes,
@@ -63,7 +70,7 @@ jobs:
           }
           REPOCONF
 
-          cat > repo/index.html << 'HTML'
+          cat > staging/index.html << 'HTML'
           <!DOCTYPE html>
           <html>
           <head><title>c0de-kimlab OPNsense Repository</title></head>
@@ -82,7 +89,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: repo
+          path: staging
 
   deploy:
     needs: build-repo
