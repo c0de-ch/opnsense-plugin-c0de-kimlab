@@ -9,6 +9,8 @@ export default class KeaLeaseSync extends BaseTableWidget {
         this.resizeHandles = "e, w";
         this.currentView = 'table';
         this.hostLimit = 20;
+        this.sortField = 'hostname';
+        this.sortAsc = true;
         this.refreshInterval = 10000;
         this.statusData = null;
         this.hostsData = [];
@@ -116,24 +118,64 @@ export default class KeaLeaseSync extends BaseTableWidget {
             return;
         }
 
+        // Sort hosts
+        hosts.sort((a, b) => {
+            let va, vb;
+            if (this.sortField === 'ip') {
+                // Numeric IP sort
+                va = a.ip.split('.').reduce((acc, oct) => acc * 256 + parseInt(oct), 0);
+                vb = b.ip.split('.').reduce((acc, oct) => acc * 256 + parseInt(oct), 0);
+            } else {
+                va = (a[this.sortField] || '').toLowerCase();
+                vb = (b[this.sortField] || '').toLowerCase();
+            }
+            if (va < vb) return this.sortAsc ? -1 : 1;
+            if (va > vb) return this.sortAsc ? 1 : -1;
+            return 0;
+        });
+
+        const sortIcon = (field) => {
+            if (this.sortField !== field) return '';
+            return this.sortAsc ? ' <i class="fa fa-caret-up"></i>' : ' <i class="fa fa-caret-down"></i>';
+        };
+
         let html = '<table class="table table-condensed table-striped" style="margin: 0;">';
-        html += '<thead><tr><th style="text-align:left;">Hostname</th><th style="text-align:left;">IP</th><th>Type</th><th>Status</th></tr></thead><tbody>';
+        html += `<thead><tr>
+            <th class="kls-sort" data-sort="hostname" style="text-align:left; cursor:pointer;">Hostname${sortIcon('hostname')}</th>
+            <th class="kls-sort" data-sort="ip" style="text-align:left; cursor:pointer;">IP${sortIcon('ip')}</th>
+            <th style="width: 50px; text-align:center;">Type</th>
+            <th style="width: 20px; text-align:center;"></th>
+        </tr></thead><tbody>`;
 
         hosts.forEach(host => {
             const name = this.escapeHtml(host.hostname);
             const ip = this.escapeHtml(host.ip);
             const typeBadge = host.type === 'static'
-                ? '<span class="label label-info" style="font-size: 10px;">static</span>'
-                : '<span class="label label-default" style="font-size: 10px;">dynamic</span>';
+                ? '<span class="label label-info" style="font-size: 10px;">S</span>'
+                : '<span class="label label-default" style="font-size: 10px;">D</span>';
             const statusDot = host.online
                 ? '<i class="fa fa-circle text-success" style="font-size: 8px;"></i>'
                 : '<i class="fa fa-circle text-muted" style="font-size: 8px;"></i>';
 
-            html += `<tr><td style="text-align:left;">${name}</td><td style="text-align:left; font-family: monospace; font-size: 11px;">${ip}</td><td>${typeBadge}</td><td>${statusDot}</td></tr>`;
+            html += `<tr><td style="text-align:left;">${name}</td><td style="text-align:left; font-family:monospace; font-size:11px;">${ip}</td><td style="text-align:center;">${typeBadge}</td><td style="text-align:center;">${statusDot}</td></tr>`;
         });
 
         html += '</tbody></table>';
         container.innerHTML = html;
+
+        // Bind sort click handlers
+        container.querySelectorAll('.kls-sort').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.dataset.sort;
+                if (this.sortField === field) {
+                    this.sortAsc = !this.sortAsc;
+                } else {
+                    this.sortField = field;
+                    this.sortAsc = true;
+                }
+                this.render();
+            });
+        });
     }
 
     renderMap(container) {

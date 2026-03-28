@@ -83,15 +83,40 @@ clean_hostname() {
     return 0
 }
 
-# ── Step 1: Parse Kea static reservations → STATIC_LEASES ───
+# Derive DHCPv6 config path from DHCPv4 config path
+KEA_CONF6=$(echo "$KEA_CONF" | sed 's/dhcp4/dhcp6/')
+
+# ── Step 1a: Parse Kea DHCPv4 static reservations ───────────
 STATIC_COUNT=0
 if [ -f "$KEA_CONF" ]; then
-    awk '
-        /"ip-address"/ { gsub(/[",]/, ""); split($0, a, ":"); ip=a[2]; gsub(/ /, "", ip) }
-        /"hostname"/ { gsub(/[",]/, ""); split($0, a, ":"); hn=a[2]; gsub(/ /, "", hn); if (ip != "" && hn != "") print "A|" hn "|" ip "|static"; ip=""; hn="" }
-    ' "$KEA_CONF" >> "$STATIC_LEASES"
-    STATIC_COUNT=$(wc -l < "$STATIC_LEASES" | tr -d ' ')
+    python3 -c "
+import json, sys
+with open('$KEA_CONF') as f:
+    cfg = json.load(f)
+for subnet in cfg.get('Dhcp4', {}).get('subnet4', []):
+    for r in subnet.get('reservations', []):
+        hn = r.get('hostname', '')
+        ip = r.get('ip-address', '')
+        if hn and ip:
+            print('A|' + hn + '|' + ip + '|static')
+" >> "$STATIC_LEASES" 2>/dev/null
 fi
+
+# ── Step 1b: Parse Kea DHCPv6 static reservations ───────────
+if [ -f "$KEA_CONF6" ]; then
+    python3 -c "
+import json, sys
+with open('$KEA_CONF6') as f:
+    cfg = json.load(f)
+for subnet in cfg.get('Dhcp6', {}).get('subnet6', []):
+    for r in subnet.get('reservations', []):
+        hn = r.get('hostname', '')
+        for ip in r.get('ip-addresses', []):
+            if hn and ip:
+                print('AAAA|' + hn + '|' + ip + '|static')
+" >> "$STATIC_LEASES" 2>/dev/null
+fi
+STATIC_COUNT=$(wc -l < "$STATIC_LEASES" | tr -d ' ')
 
 # Start with static reservations
 cp "$STATIC_LEASES" "$CURRENT_LEASES"
