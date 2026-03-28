@@ -30,42 +30,26 @@ Includes automatic PTR records, stale record cleanup, and a dashboard widget wit
 
 ## Install
 
-Download the `.pkg` from the [latest release](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest).
+### Option A: Add Repository (recommended)
 
-### Option A: Via OPNsense Web Shell (no SSH needed)
+One-time setup — adds this repo to OPNsense so the plugin appears in **System > Firmware > Plugins** and gets updates via `pkg upgrade`.
 
-1. Go to **System > Firmware > Status**
-2. Click the **terminal icon** (top right corner)
-3. Paste:
+On OPNsense (via SSH or **System > Firmware > Status > terminal icon**):
 
 ```sh
-fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.2/os-kealeasesync-1.0.2.pkg
+fetch -o /usr/local/etc/pkg/repos/c0de-kimlab.conf https://c0de-ch.github.io/opnsense-plugin-c0de-kimlab/c0de-kimlab.conf
+pkg update
+pkg install os-kealeasesync
+```
+
+### Option B: Direct pkg install
+
+Download from [Releases](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest) and install manually:
+
+```sh
+fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.8.pkg
 pkg install /tmp/os-kealeasesync.pkg
-service configd restart
 ```
-
-### Option B: Via SSH
-
-```sh
-ssh root@<opnsense>
-fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.2/os-kealeasesync-1.0.2.pkg
-pkg install /tmp/os-kealeasesync.pkg
-```
-
-### Option C: From your workstation
-
-```sh
-# Download and copy the .pkg
-curl -Lo os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.2/os-kealeasesync-1.0.2.pkg
-scp os-kealeasesync.pkg root@<opnsense>:/tmp/
-
-# Install
-ssh root@<opnsense> "pkg install /tmp/os-kealeasesync.pkg"
-```
-
-> **Note:** OPNsense does not support uploading custom packages through the Plugins UI.
-> The Plugins page only lists packages from configured repositories.
-> Use the web shell or SSH methods above instead.
 
 ### Enable SSH access (if needed)
 
