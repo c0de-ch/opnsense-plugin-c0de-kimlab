@@ -23,59 +23,56 @@ Includes automatic PTR records, stale record cleanup, and a dashboard widget wit
 - ARP-based online/offline detection
 - Two-tier defaults: safe distribution defaults in model, personal values via gitignored `defaults.conf`
 
-## Install from Release
-
-Download the `.pkg` from the [latest release](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest) and install directly on OPNsense:
-
-```sh
-# On OPNsense (as root):
-fetch -o /tmp/os-kealeasesync.pkg \
-  https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest/download/os-kealeasesync-1.0.0.pkg
-pkg install /tmp/os-kealeasesync.pkg
-```
-
-A `.tar.gz` with manual install/uninstall scripts is also available on each release.
-
 ## Prerequisites
 
 - OPNsense 24.7+ with **Kea DHCP** and **Unbound DNS** enabled
-- `os-caddy` plugin (for reverse proxy domains)
-- Root SSH access to OPNsense
-
-## Build from Source
-
-```sh
-# Clone
-git clone git@github-c0de:c0de-ch/opnsense-plugin-c0de-kimlab.git
-cd opnsense-plugin-c0de-kimlab
-
-# Build package
-cd net/kealeasesync
-make package
-# Output: work/pkg/os-kealeasesync-1.0_1.pkg
-```
+- `os-caddy` plugin installed (for reverse proxy domains)
 
 ## Install
 
-### Option A: Package install
+Download the `.pkg` from the [latest release](https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/latest).
+
+### Option A: Via OPNsense Web Shell (no SSH needed)
+
+1. Go to **System > Firmware > Status**
+2. Click the **terminal icon** (top right corner)
+3. Paste:
 
 ```sh
-# Copy package to OPNsense
-scp work/pkg/os-kealeasesync-*.pkg root@<opnsense>:/tmp/
-
-# Install
-ssh root@<opnsense>
-pkg install /tmp/os-kealeasesync-*.pkg
+fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+pkg install /tmp/os-kealeasesync.pkg
 service configd restart
 ```
 
-### Option B: Direct deploy (development)
+### Option B: Via SSH
 
 ```sh
-cd net/kealeasesync
-make install DESTDIR=root@<opnsense>:/usr/local
-ssh root@<opnsense> "service configd restart"
+ssh root@<opnsense>
+fetch -o /tmp/os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+pkg install /tmp/os-kealeasesync.pkg
 ```
+
+### Option C: From your workstation
+
+```sh
+# Download and copy the .pkg
+curl -Lo os-kealeasesync.pkg https://github.com/c0de-ch/opnsense-plugin-c0de-kimlab/releases/download/v1.0.0/os-kealeasesync-1.0.0.pkg
+scp os-kealeasesync.pkg root@<opnsense>:/tmp/
+
+# Install
+ssh root@<opnsense> "pkg install /tmp/os-kealeasesync.pkg"
+```
+
+> **Note:** OPNsense does not support uploading custom packages through the Plugins UI.
+> The Plugins page only lists packages from configured repositories.
+> Use the web shell or SSH methods above instead.
+
+### Enable SSH access (if needed)
+
+1. Go to **System > Settings > Administration**
+2. Under **Secure Shell**, check **Enable Secure Shell**
+3. Check **Permit root user login**
+4. Click **Save**
 
 ### Apply personal defaults (optional)
 
@@ -85,6 +82,15 @@ cp net/kealeasesync/defaults.conf.sample net/kealeasesync/defaults.conf
 
 cd net/kealeasesync
 make apply-defaults OPNSENSE_HOST=root@<opnsense>
+```
+
+## Build from Source
+
+```sh
+git clone git@github-c0de:c0de-ch/opnsense-plugin-c0de-kimlab.git
+cd opnsense-plugin-c0de-kimlab/net/kealeasesync
+make package
+# Output: work/pkg/os-kealeasesync-1.0_1.pkg
 ```
 
 ## Configuration
