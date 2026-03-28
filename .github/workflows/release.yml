@@ -96,7 +96,7 @@ jobs:
             "licenselogic": "single",
             "licenses": ["BSD2CLAUSE"],
             "deps": {
-              "os-unbound": {"origin": "dns/unbound", "version": "0"}
+              "unbound": {"origin": "dns/unbound", "version": "0"}
             }
           }
           MANIFEST_EOF
@@ -119,7 +119,7 @@ jobs:
             "licenselogic": "single",
             "licenses": ["BSD2CLAUSE"],
             "deps": {
-              "os-unbound": {"origin": "dns/unbound", "version": "0"}
+              "unbound": {"origin": "dns/unbound", "version": "0"}
             },
             "files": ${FILES_JSON},
             "directories": ${DIRS_JSON},
