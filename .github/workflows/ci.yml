@@ -78,6 +78,16 @@ jobs:
             exit 1
           fi
 
+      - name: Run Python tests
+        run: |
+          echo "Running Python tests..."
+          python3 -m pytest tests/ -v --tb=short 2>/dev/null || python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Run shell tests
+        run: |
+          echo "Running shell tests..."
+          bash tests/test_sync.sh
+
       - name: Check file structure
         run: |
           echo "Checking required files..."
