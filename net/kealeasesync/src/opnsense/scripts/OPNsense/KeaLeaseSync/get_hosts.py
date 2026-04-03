@@ -65,7 +65,10 @@ reachable_ips = get_arp_ips() | get_ndp_ips()
 
 hosts = data.get('hosts', [])
 for host in hosts:
-    host['online'] = host.get('ip', '') in reachable_ips
+    if host.get('type') == 'peer':
+        host['online'] = None
+    else:
+        host['online'] = host.get('ip', '') in reachable_ips
 
 print(json.dumps({'hosts': hosts}))
 sys.exit(0)

@@ -150,12 +150,22 @@ export default class KeaLeaseSync extends BaseTableWidget {
         hosts.forEach(host => {
             const name = this.escapeHtml(host.hostname);
             const ip = this.escapeHtml(host.ip);
-            const typeBadge = host.type === 'static'
-                ? '<span class="label label-info" style="font-size: 10px;">S</span>'
-                : '<span class="label label-default" style="font-size: 10px;">D</span>';
-            const statusDot = host.online
-                ? '<i class="fa fa-circle text-success" style="font-size: 8px;"></i>'
-                : '<i class="fa fa-circle text-muted" style="font-size: 8px;"></i>';
+            let typeBadge;
+            if (host.type === 'static') {
+                typeBadge = '<span class="label label-info" style="font-size: 10px;">S</span>';
+            } else if (host.type === 'peer') {
+                typeBadge = '<span class="label label-warning" style="font-size: 10px;">P</span>';
+            } else {
+                typeBadge = '<span class="label label-default" style="font-size: 10px;">D</span>';
+            }
+            let statusDot;
+            if (host.online === null) {
+                statusDot = '<i class="fa fa-minus text-muted" style="font-size: 8px;"></i>';
+            } else if (host.online) {
+                statusDot = '<i class="fa fa-circle text-success" style="font-size: 8px;"></i>';
+            } else {
+                statusDot = '<i class="fa fa-circle text-muted" style="font-size: 8px;"></i>';
+            }
 
             html += `<tr><td style="text-align:left;">${name}</td><td style="text-align:left; font-family:monospace; font-size:11px;">${ip}</td><td style="text-align:center;">${typeBadge}</td><td style="text-align:center;">${statusDot}</td></tr>`;
         });
@@ -194,18 +204,23 @@ export default class KeaLeaseSync extends BaseTableWidget {
         const cx = width / 2;
         const cy = height / 2;
 
-        // Separate static (inner ring) and dynamic (outer ring)
+        // Separate static (inner ring), dynamic (middle ring), peer (outer ring)
         const staticHosts = hosts.filter(h => h.type === 'static');
         const dynamicHosts = hosts.filter(h => h.type === 'dynamic');
+        const peerHosts = hosts.filter(h => h.type === 'peer');
 
-        const innerRadius = Math.min(width, height) * 0.25;
-        const outerRadius = Math.min(width, height) * 0.4;
+        const innerRadius = Math.min(width, height) * 0.22;
+        const outerRadius = Math.min(width, height) * 0.35;
+        const peerRadius = Math.min(width, height) * 0.46;
 
         let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="display: block;">`;
 
         // Background circles (rings)
         svg += `<circle cx="${cx}" cy="${cy}" r="${innerRadius}" fill="none" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4,4"/>`;
         svg += `<circle cx="${cx}" cy="${cy}" r="${outerRadius}" fill="none" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4,4"/>`;
+        if (peerHosts.length > 0) {
+            svg += `<circle cx="${cx}" cy="${cy}" r="${peerRadius}" fill="none" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4,4"/>`;
+        }
 
         // Gateway center
         svg += `<circle cx="${cx}" cy="${cy}" r="16" fill="#337ab7" stroke="#fff" stroke-width="2"/>`;
@@ -221,7 +236,7 @@ export default class KeaLeaseSync extends BaseTableWidget {
                 const angle = angleStep * i - Math.PI / 2;
                 const x = cx + radius * Math.cos(angle);
                 const y = cy + radius * Math.sin(angle);
-                const color = host.online ? baseColor : '#ccc';
+                const color = (host.online === null) ? baseColor : (host.online ? baseColor : '#ccc');
                 const nodeRadius = 8;
 
                 // Line to gateway
@@ -241,12 +256,14 @@ export default class KeaLeaseSync extends BaseTableWidget {
 
         drawHostsOnRing(staticHosts, innerRadius, '#5cb85c');
         drawHostsOnRing(dynamicHosts, outerRadius, '#f0ad4e');
+        drawHostsOnRing(peerHosts, peerRadius, '#9b59b6');
 
         // Legend
         const ly = height - 15;
         svg += `<circle cx="15" cy="${ly}" r="5" fill="#5cb85c"/><text x="25" y="${ly + 3}" font-size="10" fill="#555">Static</text>`;
         svg += `<circle cx="75" cy="${ly}" r="5" fill="#f0ad4e"/><text x="85" y="${ly + 3}" font-size="10" fill="#555">Dynamic</text>`;
-        svg += `<circle cx="145" cy="${ly}" r="5" fill="#ccc"/><text x="155" y="${ly + 3}" font-size="10" fill="#555">Offline</text>`;
+        svg += `<circle cx="145" cy="${ly}" r="5" fill="#9b59b6"/><text x="155" y="${ly + 3}" font-size="10" fill="#555">Peer</text>`;
+        svg += `<circle cx="195" cy="${ly}" r="5" fill="#ccc"/><text x="205" y="${ly + 3}" font-size="10" fill="#555">Offline</text>`;
 
         svg += '</svg>';
         container.innerHTML = svg;

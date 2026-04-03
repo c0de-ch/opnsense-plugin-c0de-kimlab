@@ -380,6 +380,66 @@ fi
 
 # ══════════════════════════════════════════════════════════════
 echo ""
+echo "=== Peer host precedence tests ==="
+# ══════════════════════════════════════════════════════════════
+
+# Simulate local hosts
+PEER_LOCAL="$TEST_DIR/peer_local.txt"
+echo "A|myhost|192.168.1.10|dynamic" > "$PEER_LOCAL"
+echo "A|server|192.168.1.20|static" >> "$PEER_LOCAL"
+
+# Simulate peer hosts (some overlap with local)
+PEER_FILE="$TEST_DIR/peer_remote.txt"
+echo "A|myhost|10.0.0.10|peer" > "$PEER_FILE"
+echo "A|remote-only|10.0.0.20|peer" >> "$PEER_FILE"
+echo "AAAA|remote-v6|2001:db8::99|peer" >> "$PEER_FILE"
+
+# Merge logic: only add peer hosts not already present locally
+while IFS='|' read -r rtype hostname ip htype; do
+    [ -z "$hostname" ] && continue
+    if ! grep -q "^${rtype}|${hostname}|" "$PEER_LOCAL" 2>/dev/null; then
+        echo "${rtype}|${hostname}|${ip}|peer" >> "$PEER_LOCAL"
+    fi
+done < "$PEER_FILE"
+
+PEER_TOTAL=$(wc -l < "$PEER_LOCAL" | tr -d ' ')
+assert_eq "peer merge total count" "4" "$PEER_TOTAL"
+
+# myhost should keep its local IP (local takes precedence)
+MYHOST_IP=$(grep '^A|myhost|' "$PEER_LOCAL" | head -1 | cut -d'|' -f3)
+assert_eq "local host takes precedence over peer" "192.168.1.10" "$MYHOST_IP"
+
+# remote-only should be added
+if grep -q 'remote-only' "$PEER_LOCAL"; then
+    pass "peer-only host added"
+else
+    fail "peer-only host added" "present" "not found"
+fi
+
+# remote-v6 should be added
+if grep -q 'remote-v6' "$PEER_LOCAL"; then
+    pass "peer IPv6 host added"
+else
+    fail "peer IPv6 host added" "present" "not found"
+fi
+
+# Test empty peer file
+PEER_EMPTY_LOCAL="$TEST_DIR/peer_empty_local.txt"
+echo "A|myhost|192.168.1.10|dynamic" > "$PEER_EMPTY_LOCAL"
+BEFORE_COUNT=$(wc -l < "$PEER_EMPTY_LOCAL" | tr -d ' ')
+PEER_EMPTY="$TEST_DIR/peer_empty.txt"
+: > "$PEER_EMPTY"
+while IFS='|' read -r rtype hostname ip htype; do
+    [ -z "$hostname" ] && continue
+    if ! grep -q "^${rtype}|${hostname}|" "$PEER_EMPTY_LOCAL" 2>/dev/null; then
+        echo "${rtype}|${hostname}|${ip}|peer" >> "$PEER_EMPTY_LOCAL"
+    fi
+done < "$PEER_EMPTY"
+AFTER_COUNT=$(wc -l < "$PEER_EMPTY_LOCAL" | tr -d ' ')
+assert_eq "empty peer file no changes" "$BEFORE_COUNT" "$AFTER_COUNT"
+
+# ══════════════════════════════════════════════════════════════
+echo ""
 echo "=== Empty lease file tests ==="
 # ══════════════════════════════════════════════════════════════
 

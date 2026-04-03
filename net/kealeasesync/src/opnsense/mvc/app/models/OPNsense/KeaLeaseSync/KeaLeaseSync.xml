@@ -66,6 +66,21 @@
                 <i60>60 minutes</i60>
             </OptionValues>
         </scanInterval>
+        <peerEnabled type="BooleanField">
+            <Default>0</Default>
+            <Required>Y</Required>
+        </peerEnabled>
+        <peerUrl type="TextField">
+            <Required>N</Required>
+            <Mask>/^https?:\/\/[^\s]+$/</Mask>
+            <ValidationMessage>Enter a valid URL (e.g. https://firewall.example.com)</ValidationMessage>
+        </peerUrl>
+        <peerApiKey type="TextField">
+            <Required>N</Required>
+        </peerApiKey>
+        <peerApiSecret type="TextField">
+            <Required>N</Required>
+        </peerApiSecret>
         </general>
     </items>
 </model>

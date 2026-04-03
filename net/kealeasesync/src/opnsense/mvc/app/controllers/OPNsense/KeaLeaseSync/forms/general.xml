@@ -62,4 +62,28 @@
         <type>dropdown</type>
         <help>How often the sync runs (in minutes). Add a matching cron job under System &gt; Settings &gt; Cron.</help>
     </field>
+    <field>
+        <id>kealeasesync.general.peerEnabled</id>
+        <label>Peer Sync Enabled</label>
+        <type>checkbox</type>
+        <help>Enable fetching hosts from a remote OPNsense peer</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.peerUrl</id>
+        <label>Peer URL</label>
+        <type>text</type>
+        <help>Base URL of the remote OPNsense (e.g. https://10.0.0.1)</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.peerApiKey</id>
+        <label>Peer API Key</label>
+        <type>text</type>
+        <help>API key for authenticating to the remote OPNsense</help>
+    </field>
+    <field>
+        <id>kealeasesync.general.peerApiSecret</id>
+        <label>Peer API Secret</label>
+        <type>password</type>
+        <help>API secret for authenticating to the remote OPNsense</help>
+    </field>
 </form>
