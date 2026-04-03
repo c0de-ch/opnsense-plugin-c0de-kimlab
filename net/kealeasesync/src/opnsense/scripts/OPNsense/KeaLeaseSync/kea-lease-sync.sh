@@ -164,6 +164,29 @@ if [ -f "$LEASE6_FILE" ]; then
     done
 fi
 
+# ── Step 3b: Fetch peer hosts (if enabled) ────────────────
+PEER_COUNT=0
+if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ] && [ -n "$PEER_API_SECRET" ]; then
+    PEER_HOSTS="${RUN_DIR}/sync.peer.$$"
+    SCRIPT_DIR="$(dirname "$0")"
+    if python3 "${SCRIPT_DIR}/fetch_peer_hosts.py" "$PEER_URL" "$PEER_API_KEY" "$PEER_API_SECRET" > "$PEER_HOSTS" 2>/dev/null; then
+        while IFS='|' read -r rtype hostname ip htype; do
+            [ -z "$hostname" ] && continue
+            # Local hosts take precedence — only add if no local entry for this rtype+hostname
+            if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
+                echo "${rtype}|${hostname}|${ip}|peer" >> "$CURRENT_LEASES"
+            fi
+        done < "$PEER_HOSTS"
+        PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
+        log_info "Peer sync: ${PEER_COUNT} hosts added from ${PEER_URL}"
+    else
+        log_err "Peer sync: failed to fetch from ${PEER_URL}"
+    fi
+    rm -f "$PEER_HOSTS"
+elif [ "$PEER_ENABLED" = "1" ]; then
+    log_err "Peer sync enabled but URL/credentials not configured"
+fi
+
 # ── Load previous state ──────────────────────────────────────
 PREVIOUS_LEASES=""
 if [ -f "$STATE_FILE" ]; then
@@ -234,6 +257,7 @@ cp "$CURRENT_LEASES" "$STATE_FILE" 2>/dev/null
 # Recount after subshell processing
 STATIC_COUNT=$(grep -c '|static$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
 DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
+PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
@@ -247,6 +271,7 @@ cat > "$STATUS_FILE" <<STATUSEOF
     "hosts_removed": ${REMOVED},
     "static_count": ${STATIC_COUNT},
     "dynamic_count": ${DYNAMIC_COUNT},
+    "peer_count": ${PEER_COUNT},
     "duration": "${DURATION}s",
     "direct_domain": "${DIRECT_DOMAIN}",
     "proxy_domains": "${PROXY_DOMAINS}"
@@ -258,4 +283,4 @@ cat > "$HOSTS_FILE" <<HOSTSEOF
 {"hosts":[${HOSTS_JSON}]}
 HOSTSEOF
 
-log_info "Sync done: ${ADDED} registered, ${REMOVED} removed (${STATIC_COUNT} static, ${DYNAMIC_COUNT} dynamic) in ${DURATION}s"
+log_info "Sync done: ${ADDED} registered, ${REMOVED} removed (${STATIC_COUNT} static, ${DYNAMIC_COUNT} dynamic, ${PEER_COUNT} peer) in ${DURATION}s"

@@ -56,6 +56,7 @@
                 html += '<tr><td><strong>Hosts Removed</strong></td><td>' + (data.hosts_removed || 0) + '</td></tr>';
                 html += '<tr><td><strong>Static Reservations</strong></td><td>' + (data.static_count || 0) + '</td></tr>';
                 html += '<tr><td><strong>Dynamic Leases</strong></td><td>' + (data.dynamic_count || 0) + '</td></tr>';
+                html += '<tr><td><strong>Peer Hosts</strong></td><td>' + (data.peer_count || 0) + '</td></tr>';
                 html += '<tr><td><strong>Duration</strong></td><td>' + (data.duration || '-') + '</td></tr>';
                 html += '</table>';
                 $("#sync_status").html(html);
@@ -100,12 +101,22 @@
             html += '<th class="hosts-sort" data-sort="online" style="cursor:pointer;">Status' + sortIcon('online') + '</th>';
             html += '</tr></thead><tbody>';
             $.each(sorted, function (i, host) {
-                var typeBadge = host.type === 'static'
-                    ? '<span class="label label-info">static</span>'
-                    : '<span class="label label-default">dynamic</span>';
-                var statusIcon = host.online
-                    ? '<i class="fa fa-circle text-success"></i> online'
-                    : '<i class="fa fa-circle text-danger"></i> offline';
+                var typeBadge;
+                if (host.type === 'static') {
+                    typeBadge = '<span class="label label-info">static</span>';
+                } else if (host.type === 'peer') {
+                    typeBadge = '<span class="label label-warning">peer</span>';
+                } else {
+                    typeBadge = '<span class="label label-default">dynamic</span>';
+                }
+                var statusIcon;
+                if (host.online === null) {
+                    statusIcon = '<i class="fa fa-circle text-muted"></i> remote';
+                } else if (host.online) {
+                    statusIcon = '<i class="fa fa-circle text-success"></i> online';
+                } else {
+                    statusIcon = '<i class="fa fa-circle text-danger"></i> offline';
+                }
                 html += '<tr>';
                 html += '<td>' + $('<span>').text(host.hostname).html() + '</td>';
                 html += '<td>' + $('<span>').text(host.ip).html() + '</td>';

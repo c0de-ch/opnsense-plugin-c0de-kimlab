@@ -200,7 +200,10 @@ class TestOnlineStatusMerge(unittest.TestCase):
         reachable = arp_ips | ndp_ips
         hosts = hosts_data.get('hosts', [])
         for host in hosts:
-            host['online'] = host.get('ip', '') in reachable
+            if host.get('type') == 'peer':
+                host['online'] = None
+            else:
+                host['online'] = host.get('ip', '') in reachable
         return hosts
 
     def test_ipv4_host_online(self):
@@ -258,6 +261,24 @@ class TestOnlineStatusMerge(unittest.TestCase):
     def test_no_hosts_key(self):
         hosts = self._run_merge({}, {'192.168.1.1'}, set())
         self.assertEqual(hosts, [])
+
+    def test_peer_host_gets_online_none(self):
+        hosts = self._run_merge(
+            {'hosts': [{'hostname': 'remote', 'ip': '10.0.0.10', 'type': 'peer', 'rtype': 'A'}]},
+            {'10.0.0.10'}, set()
+        )
+        self.assertIsNone(hosts[0]['online'])
+
+    def test_mixed_local_and_peer(self):
+        hosts = self._run_merge(
+            {'hosts': [
+                {'hostname': 'local', 'ip': '192.168.1.10', 'type': 'dynamic', 'rtype': 'A'},
+                {'hostname': 'remote', 'ip': '10.0.0.10', 'type': 'peer', 'rtype': 'A'},
+            ]},
+            {'192.168.1.10'}, set()
+        )
+        self.assertTrue(hosts[0]['online'])
+        self.assertIsNone(hosts[1]['online'])
 
 
 if __name__ == '__main__':
