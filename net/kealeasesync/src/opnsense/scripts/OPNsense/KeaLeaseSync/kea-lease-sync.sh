@@ -19,26 +19,26 @@ LOG_TAG="kea-lease-sync"
 
 # Read generated config
 if [ ! -f "$CONF_FILE" ]; then
-    logger -t "$LOG_TAG" -p daemon.err "Config file not found: $CONF_FILE"
+    logger -t "$LOG_TAG" -p user.err "Config file not found: $CONF_FILE"
     exit 1
 fi
 . "$CONF_FILE"
 
 # Check if enabled
 if [ "$ENABLED" != "1" ]; then
-    logger -t "$LOG_TAG" -p daemon.info "Sync disabled, skipping"
+    logger -t "$LOG_TAG" -p user.info "Sync disabled, skipping"
     exit 0
 fi
 
 # Validate required fields
 if [ -z "$DIRECT_DOMAIN" ]; then
-    logger -t "$LOG_TAG" -p daemon.err "directDomain not configured"
+    logger -t "$LOG_TAG" -p user.err "directDomain not configured"
     exit 1
 fi
 # ─────────────────────────────────────────────────────────────
 
-log_info()  { logger -t "$LOG_TAG" -p daemon.info  "$1"; }
-log_err()   { logger -t "$LOG_TAG" -p daemon.err   "$1"; }
+log_info()  { logger -t "$LOG_TAG" -p user.info  "$1"; }
+log_err()   { logger -t "$LOG_TAG" -p user.err   "$1"; }
 
 uc() {
     /usr/local/sbin/unbound-control -c "$UNBOUND_CONF" "$@"
@@ -166,10 +166,10 @@ fi
 
 # ── Step 3b: Fetch peer hosts (if enabled) ────────────────
 PEER_COUNT=0
-if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ] && [ -n "$PEER_API_SECRET" ]; then
+if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ]; then
     PEER_HOSTS="${RUN_DIR}/sync.peer.$$"
     SCRIPT_DIR="$(dirname "$0")"
-    if python3 "${SCRIPT_DIR}/fetch_peer_hosts.py" "$PEER_URL" "$PEER_API_KEY" "$PEER_API_SECRET" > "$PEER_HOSTS" 2>/dev/null; then
+    if python3 "${SCRIPT_DIR}/fetch_peer_hosts.py" "$PEER_URL" "$PEER_API_KEY" > "$PEER_HOSTS" 2>/dev/null; then
         while IFS='|' read -r rtype hostname ip htype; do
             [ -z "$hostname" ] && continue
             # Local hosts take precedence — only add if no local entry for this rtype+hostname
@@ -234,6 +234,8 @@ fi
 # ── Remove stale records ─────────────────────────────────────
 REMOVED=0
 if [ -n "$PREVIOUS_LEASES" ]; then
+    STALE_FILE="${RUN_DIR}/.stale_$$"
+    : > "$STALE_FILE"
     echo "$PREVIOUS_LEASES" | while IFS='|' read -r rtype hostname ip htype; do
         [ -z "$hostname" ] && continue
         if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
@@ -245,19 +247,24 @@ if [ -n "$PREVIOUS_LEASES" ]; then
                 REV=$(echo "$ip" | awk -F. '{print $4"."$3"."$2"."$1}')
                 uc local_data_remove "${REV}.in-addr.arpa." 2>/dev/null
             fi
-            REMOVED=$((REMOVED + 1))
+            echo x >> "$STALE_FILE"
             log_info "Removed stale: ${hostname} (${rtype} ${ip})"
         fi
     done
+    REMOVED=$(wc -l < "$STALE_FILE" | tr -d ' ')
+    rm -f "$STALE_FILE"
 fi
 
 # Save state
 cp "$CURRENT_LEASES" "$STATE_FILE" 2>/dev/null
 
 # Recount after subshell processing
-STATIC_COUNT=$(grep -c '|static$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
-DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
-PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
+STATIC_COUNT=$(grep -c '|static$' "$CURRENT_LEASES" 2>/dev/null)
+STATIC_COUNT=${STATIC_COUNT:-0}
+DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null)
+DYNAMIC_COUNT=${DYNAMIC_COUNT:-0}
+PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null)
+PEER_COUNT=${PEER_COUNT:-0}
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))

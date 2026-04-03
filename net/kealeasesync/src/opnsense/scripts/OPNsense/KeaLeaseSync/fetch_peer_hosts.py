@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 """Fetch hosts from a remote OPNsense peer's KeaLeaseSync API.
 
-Usage: fetch_peer_hosts.py <url> <api_key> <api_secret>
+Usage: fetch_peer_hosts.py <url> <api_key>
 
 Outputs pipe-delimited lines to stdout: RTYPE|hostname|ip|peer
 Only includes hosts with type=static or type=dynamic (skips type=peer
@@ -10,7 +10,6 @@ to prevent transitive propagation between peers).
 On any error: prints warning to stderr, outputs nothing to stdout, exits 0.
 """
 
-import base64
 import json
 import ssl
 import sys
@@ -18,15 +17,11 @@ import urllib.error
 import urllib.request
 
 
-def fetch(url, api_key, api_secret):
-    endpoint = url.rstrip('/') + '/api/kealeasesync/service/hosts'
-
-    credentials = base64.b64encode(
-        '{}:{}'.format(api_key, api_secret).encode()
-    ).decode()
+def fetch(url, api_key):
+    endpoint = url.rstrip('/') + '/api/kealeasesync/peer/hosts'
 
     req = urllib.request.Request(endpoint)
-    req.add_header('Authorization', 'Basic ' + credentials)
+    req.add_header('X-API-Key', api_key)
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -48,15 +43,15 @@ def fetch(url, api_key, api_secret):
 
 
 def main():
-    if len(sys.argv) != 4:
-        print('Usage: fetch_peer_hosts.py <url> <api_key> <api_secret>',
+    if len(sys.argv) != 3:
+        print('Usage: fetch_peer_hosts.py <url> <api_key>',
               file=sys.stderr)
         sys.exit(0)
 
-    url, api_key, api_secret = sys.argv[1], sys.argv[2], sys.argv[3]
+    url, api_key = sys.argv[1], sys.argv[2]
 
     try:
-        fetch(url, api_key, api_secret)
+        fetch(url, api_key)
     except Exception as e:
         print('Peer fetch error: {}'.format(e), file=sys.stderr)
 

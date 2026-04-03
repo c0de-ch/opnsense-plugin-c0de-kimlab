@@ -77,13 +77,7 @@
     <field>
         <id>kealeasesync.general.peerApiKey</id>
         <label>Peer API Key</label>
-        <type>text</type>
-        <help>API key for authenticating to the remote OPNsense</help>
-    </field>
-    <field>
-        <id>kealeasesync.general.peerApiSecret</id>
-        <label>Peer API Secret</label>
         <type>password</type>
-        <help>API secret for authenticating to the remote OPNsense</help>
+        <help>Shared secret for peer sync — must be the same on both firewalls</help>
     </field>
 </form>

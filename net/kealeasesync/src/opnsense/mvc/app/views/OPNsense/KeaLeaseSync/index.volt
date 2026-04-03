@@ -66,6 +66,7 @@
         var hostsSortField = 'hostname';
         var hostsSortAsc = true;
         var hostsCache = [];
+        var hostsFilter = 'all';
 
         function sortHosts(hosts, field, asc) {
             return hosts.slice().sort(function (a, b) {
@@ -88,12 +89,21 @@
                 $("#hosts_table").html('<div class="alert alert-info">No hosts synced yet.</div>');
                 return;
             }
-            var sorted = sortHosts(hostsCache, hostsSortField, hostsSortAsc);
+            var filtered = hostsCache;
+            if (hostsFilter === 'online') {
+                filtered = hostsCache.filter(function (h) { return h.online === true; });
+            }
+            var sorted = sortHosts(filtered, hostsSortField, hostsSortAsc);
             var sortIcon = function (f) {
                 if (hostsSortField !== f) return '';
                 return hostsSortAsc ? ' <i class="fa fa-caret-up"></i>' : ' <i class="fa fa-caret-down"></i>';
             };
-            var html = '<table class="table table-striped table-condensed">';
+            var html = '<div class="btn-group btn-group-xs" style="margin-bottom: 10px;">';
+            html += '<button class="btn hosts-filter' + (hostsFilter === 'all' ? ' btn-primary' : ' btn-default') + '" data-filter="all">All (' + hostsCache.length + ')</button>';
+            var onlineCount = hostsCache.filter(function (h) { return h.online === true; }).length;
+            html += '<button class="btn hosts-filter' + (hostsFilter === 'online' ? ' btn-primary' : ' btn-default') + '" data-filter="online">Online (' + onlineCount + ')</button>';
+            html += '</div>';
+            html += '<table class="table table-striped table-condensed">';
             html += '<thead><tr>';
             html += '<th class="hosts-sort" data-sort="hostname" style="cursor:pointer;">Hostname' + sortIcon('hostname') + '</th>';
             html += '<th class="hosts-sort" data-sort="ip" style="cursor:pointer;">IP Address' + sortIcon('ip') + '</th>';
@@ -134,6 +144,10 @@
                     hostsSortField = field;
                     hostsSortAsc = true;
                 }
+                renderHostsTable();
+            });
+            $(".hosts-filter").on('click', function () {
+                hostsFilter = $(this).data('filter');
                 renderHostsTable();
             });
         }

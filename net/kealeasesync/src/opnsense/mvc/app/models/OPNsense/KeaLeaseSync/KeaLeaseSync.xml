@@ -78,9 +78,6 @@
         <peerApiKey type="TextField">
             <Required>N</Required>
         </peerApiKey>
-        <peerApiSecret type="TextField">
-            <Required>N</Required>
-        </peerApiSecret>
         </general>
     </items>
 </model>

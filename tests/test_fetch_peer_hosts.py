@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Tests for fetch_peer_hosts.py — remote peer host fetching."""
 
-import base64
 import importlib.util
 import io
 import json
@@ -65,7 +64,7 @@ class TestFetch(unittest.TestCase):
         })
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         lines = captured.getvalue().strip().split('\n')
         self.assertEqual(len(lines), 3)
         self.assertEqual(lines[0], 'A|host-a|192.168.1.10|peer')
@@ -83,7 +82,7 @@ class TestFetch(unittest.TestCase):
         })
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         lines = [l for l in captured.getvalue().strip().split('\n') if l]
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0], 'A|local-host|192.168.1.10|peer')
@@ -93,7 +92,7 @@ class TestFetch(unittest.TestCase):
         mock_urlopen.return_value = _mock_response({'hosts': []})
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         self.assertEqual(captured.getvalue().strip(), '')
 
     @patch.object(_urllib_request, 'urlopen')
@@ -101,7 +100,7 @@ class TestFetch(unittest.TestCase):
         mock_urlopen.return_value = _mock_response({})
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         self.assertEqual(captured.getvalue().strip(), '')
 
     @patch.object(_urllib_request, 'urlopen')
@@ -115,7 +114,7 @@ class TestFetch(unittest.TestCase):
         })
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         lines = [l for l in captured.getvalue().strip().split('\n') if l]
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0], 'A|valid|192.168.1.12|peer')
@@ -130,7 +129,7 @@ class TestFetch(unittest.TestCase):
         })
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         lines = [l for l in captured.getvalue().strip().split('\n') if l]
         self.assertEqual(len(lines), 1)
 
@@ -143,23 +142,22 @@ class TestFetch(unittest.TestCase):
         })
         captured = io.StringIO()
         with patch('sys.stdout', captured):
-            fetch('https://10.0.0.1', 'mykey', 'mysecret')
+            fetch('https://10.0.0.1', 'mykey')
         self.assertIn('A|nortype|192.168.1.10|peer', captured.getvalue())
 
     @patch.object(_urllib_request, 'urlopen')
     def test_url_trailing_slash_stripped(self, mock_urlopen):
         mock_urlopen.return_value = _mock_response({'hosts': []})
-        fetch('https://10.0.0.1/', 'mykey', 'mysecret')
+        fetch('https://10.0.0.1/', 'mykey')
         req = mock_urlopen.call_args[0][0]
-        self.assertEqual(req.full_url, 'https://10.0.0.1/api/kealeasesync/service/hosts')
+        self.assertEqual(req.full_url, 'https://10.0.0.1/api/kealeasesync/peer/hosts')
 
     @patch.object(_urllib_request, 'urlopen')
-    def test_basic_auth_header(self, mock_urlopen):
+    def test_api_key_header(self, mock_urlopen):
         mock_urlopen.return_value = _mock_response({'hosts': []})
-        fetch('https://10.0.0.1', 'testkey', 'testsecret')
+        fetch('https://10.0.0.1', 'my-shared-secret')
         req = mock_urlopen.call_args[0][0]
-        expected = 'Basic ' + base64.b64encode(b'testkey:testsecret').decode()
-        self.assertEqual(req.get_header('Authorization'), expected)
+        self.assertEqual(req.get_header('X-api-key'), 'my-shared-secret')
 
 
 class TestFetchErrors(unittest.TestCase):
@@ -168,24 +166,24 @@ class TestFetchErrors(unittest.TestCase):
     @patch.object(_urllib_request, 'urlopen')
     def test_connection_error(self, mock_urlopen):
         mock_urlopen.side_effect = urllib.error.URLError('Connection refused')
-        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key', 'secret'])
+        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key'])
         self.assertEqual(out.strip(), '')
         self.assertIn('Peer fetch error', err)
 
     @patch.object(_urllib_request, 'urlopen')
     def test_http_403(self, mock_urlopen):
         mock_urlopen.side_effect = urllib.error.HTTPError(
-            'https://10.0.0.1/api/kealeasesync/service/hosts',
+            'https://10.0.0.1/api/kealeasesync/peer/hosts',
             403, 'Forbidden', {}, None
         )
-        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key', 'secret'])
+        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key'])
         self.assertEqual(out.strip(), '')
         self.assertIn('Peer fetch error', err)
 
     @patch.object(_urllib_request, 'urlopen')
     def test_timeout(self, mock_urlopen):
         mock_urlopen.side_effect = socket.timeout('timed out')
-        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key', 'secret'])
+        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key'])
         self.assertEqual(out.strip(), '')
         self.assertIn('Peer fetch error', err)
 
@@ -194,7 +192,7 @@ class TestFetchErrors(unittest.TestCase):
         resp = MagicMock()
         resp.read.return_value = b'not json at all'
         mock_urlopen.return_value = resp
-        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key', 'secret'])
+        out, err = _run_main(['fetch_peer_hosts.py', 'https://10.0.0.1', 'key'])
         self.assertEqual(out.strip(), '')
         self.assertIn('Peer fetch error', err)
 
@@ -208,7 +206,7 @@ class TestMainArgs(unittest.TestCase):
         self.assertIn('Usage', err)
 
     def test_too_many_args(self):
-        out, err = _run_main(['fetch_peer_hosts.py', 'a', 'b', 'c', 'd'])
+        out, err = _run_main(['fetch_peer_hosts.py', 'a', 'b', 'c'])
         self.assertEqual(out.strip(), '')
         self.assertIn('Usage', err)
 
