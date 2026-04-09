@@ -67,9 +67,9 @@ class TestFetch(unittest.TestCase):
             fetch('https://10.0.0.1', 'mykey')
         lines = captured.getvalue().strip().split('\n')
         self.assertEqual(len(lines), 3)
-        self.assertEqual(lines[0], 'A|host-a|192.168.1.10|peer')
-        self.assertEqual(lines[1], 'A|host-b|192.168.1.11|peer')
-        self.assertEqual(lines[2], 'AAAA|host-c|2001:db8::10|peer')
+        self.assertEqual(lines[0], 'A|host-a|192.168.1.10|peer|')
+        self.assertEqual(lines[1], 'A|host-b|192.168.1.11|peer|')
+        self.assertEqual(lines[2], 'AAAA|host-c|2001:db8::10|peer|')
 
     @patch.object(_urllib_request, 'urlopen')
     def test_skips_peer_type_hosts(self, mock_urlopen):
@@ -85,7 +85,7 @@ class TestFetch(unittest.TestCase):
             fetch('https://10.0.0.1', 'mykey')
         lines = [l for l in captured.getvalue().strip().split('\n') if l]
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], 'A|local-host|192.168.1.10|peer')
+        self.assertEqual(lines[0], 'A|local-host|192.168.1.10|peer|')
 
     @patch.object(_urllib_request, 'urlopen')
     def test_empty_hosts_list(self, mock_urlopen):
@@ -117,7 +117,7 @@ class TestFetch(unittest.TestCase):
             fetch('https://10.0.0.1', 'mykey')
         lines = [l for l in captured.getvalue().strip().split('\n') if l]
         self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], 'A|valid|192.168.1.12|peer')
+        self.assertEqual(lines[0], 'A|valid|192.168.1.12|peer|')
 
     @patch.object(_urllib_request, 'urlopen')
     def test_skips_hosts_missing_ip(self, mock_urlopen):
@@ -143,7 +143,7 @@ class TestFetch(unittest.TestCase):
         captured = io.StringIO()
         with patch('sys.stdout', captured):
             fetch('https://10.0.0.1', 'mykey')
-        self.assertIn('A|nortype|192.168.1.10|peer', captured.getvalue())
+        self.assertIn('A|nortype|192.168.1.10|peer|', captured.getvalue())
 
     @patch.object(_urllib_request, 'urlopen')
     def test_url_trailing_slash_stripped(self, mock_urlopen):

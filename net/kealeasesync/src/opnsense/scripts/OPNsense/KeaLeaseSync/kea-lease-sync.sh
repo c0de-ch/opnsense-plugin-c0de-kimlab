@@ -97,8 +97,9 @@ for subnet in cfg.get('Dhcp4', {}).get('subnet4', []):
     for r in subnet.get('reservations', []):
         hn = r.get('hostname', '')
         ip = r.get('ip-address', '')
+        mac = r.get('hw-address', '')
         if hn and ip:
-            print('A|' + hn + '|' + ip + '|static')
+            print('A|' + hn + '|' + ip + '|static|' + mac)
 " >> "$STATIC_LEASES" 2>/dev/null
 fi
 
@@ -111,9 +112,10 @@ with open('$KEA_CONF6') as f:
 for subnet in cfg.get('Dhcp6', {}).get('subnet6', []):
     for r in subnet.get('reservations', []):
         hn = r.get('hostname', '')
+        mac = r.get('hw-address', '')
         for ip in r.get('ip-addresses', []):
             if hn and ip:
-                print('AAAA|' + hn + '|' + ip + '|static')
+                print('AAAA|' + hn + '|' + ip + '|static|' + mac)
 " >> "$STATIC_LEASES" 2>/dev/null
 fi
 STATIC_COUNT=$(wc -l < "$STATIC_LEASES" | tr -d ' ')
@@ -137,9 +139,9 @@ if [ -f "$LEASE4_FILE" ]; then
         hostname=$(clean_hostname "$hostname") || continue
         # Remove static entry if exists (lease overrides)
         sed -i '' "/^A|${hostname}|/d" "$CURRENT_LEASES" 2>/dev/null
-        echo "A|${hostname}|${address}|dynamic" >> "$CURRENT_LEASES"
+        echo "A|${hostname}|${address}|dynamic|${hwaddr}" >> "$CURRENT_LEASES"
     done
-    DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
+    DYNAMIC_COUNT=$(grep -c '|dynamic|' "$CURRENT_LEASES" 2>/dev/null || echo 0)
 fi
 
 # ── Step 3: Parse IPv6 leases ────────────────────────────────
@@ -160,7 +162,7 @@ if [ -f "$LEASE6_FILE" ]; then
         hostname=$(clean_hostname "$hostname") || continue
         # Remove existing entry for same hostname (lease overrides static, dedup dynamic)
         sed -i '' "/^AAAA|${hostname}|/d" "$CURRENT_LEASES" 2>/dev/null
-        echo "AAAA|${hostname}|${address}|dynamic" >> "$CURRENT_LEASES"
+        echo "AAAA|${hostname}|${address}|dynamic|${hwaddr}" >> "$CURRENT_LEASES"
     done
 fi
 
@@ -170,14 +172,14 @@ if [ "$PEER_ENABLED" = "1" ] && [ -n "$PEER_URL" ] && [ -n "$PEER_API_KEY" ]; th
     PEER_HOSTS="${RUN_DIR}/sync.peer.$$"
     SCRIPT_DIR="$(dirname "$0")"
     if python3 "${SCRIPT_DIR}/fetch_peer_hosts.py" "$PEER_URL" "$PEER_API_KEY" > "$PEER_HOSTS" 2>/dev/null; then
-        while IFS='|' read -r rtype hostname ip htype; do
+        while IFS='|' read -r rtype hostname ip htype mac; do
             [ -z "$hostname" ] && continue
             # Local hosts take precedence — only add if no local entry for this rtype+hostname
             if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
-                echo "${rtype}|${hostname}|${ip}|peer" >> "$CURRENT_LEASES"
+                echo "${rtype}|${hostname}|${ip}|peer|${mac}" >> "$CURRENT_LEASES"
             fi
         done < "$PEER_HOSTS"
-        PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null || echo 0)
+        PEER_COUNT=$(grep -c '|peer|' "$CURRENT_LEASES" 2>/dev/null || echo 0)
         log_info "Peer sync: ${PEER_COUNT} hosts added from ${PEER_URL}"
     else
         log_err "Peer sync: failed to fetch from ${PEER_URL}"
@@ -197,7 +199,7 @@ fi
 ADDED=0
 HOSTS_JSON=""
 if [ -s "$CURRENT_LEASES" ]; then
-    while IFS='|' read -r rtype hostname ip htype; do
+    while IFS='|' read -r rtype hostname ip htype mac; do
         [ -z "$hostname" ] && continue
         [ -z "$ip" ] && continue
 
@@ -225,7 +227,7 @@ if [ -s "$CURRENT_LEASES" ]; then
         if [ -n "$HOSTS_JSON" ]; then
             HOSTS_JSON="${HOSTS_JSON},"
         fi
-        HOSTS_JSON="${HOSTS_JSON}{\"hostname\":\"${hostname}\",\"ip\":\"${ip}\",\"type\":\"${htype}\",\"rtype\":\"${rtype}\"}"
+        HOSTS_JSON="${HOSTS_JSON}{\"hostname\":\"${hostname}\",\"ip\":\"${ip}\",\"type\":\"${htype}\",\"rtype\":\"${rtype}\",\"mac\":\"${mac}\"}"
 
         ADDED=$((ADDED + 1))
     done < "$CURRENT_LEASES"
@@ -236,7 +238,7 @@ REMOVED=0
 if [ -n "$PREVIOUS_LEASES" ]; then
     STALE_FILE="${RUN_DIR}/.stale_$$"
     : > "$STALE_FILE"
-    echo "$PREVIOUS_LEASES" | while IFS='|' read -r rtype hostname ip htype; do
+    echo "$PREVIOUS_LEASES" | while IFS='|' read -r rtype hostname ip htype mac; do
         [ -z "$hostname" ] && continue
         if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
             uc local_data_remove "${hostname}.${DIRECT_DOMAIN}." 2>/dev/null
@@ -259,11 +261,11 @@ fi
 cp "$CURRENT_LEASES" "$STATE_FILE" 2>/dev/null
 
 # Recount after subshell processing
-STATIC_COUNT=$(grep -c '|static$' "$CURRENT_LEASES" 2>/dev/null)
+STATIC_COUNT=$(grep -c '|static|' "$CURRENT_LEASES" 2>/dev/null)
 STATIC_COUNT=${STATIC_COUNT:-0}
-DYNAMIC_COUNT=$(grep -c '|dynamic$' "$CURRENT_LEASES" 2>/dev/null)
+DYNAMIC_COUNT=$(grep -c '|dynamic|' "$CURRENT_LEASES" 2>/dev/null)
 DYNAMIC_COUNT=${DYNAMIC_COUNT:-0}
-PEER_COUNT=$(grep -c '|peer$' "$CURRENT_LEASES" 2>/dev/null)
+PEER_COUNT=$(grep -c '|peer|' "$CURRENT_LEASES" 2>/dev/null)
 PEER_COUNT=${PEER_COUNT:-0}
 
 END_TIME=$(date +%s)

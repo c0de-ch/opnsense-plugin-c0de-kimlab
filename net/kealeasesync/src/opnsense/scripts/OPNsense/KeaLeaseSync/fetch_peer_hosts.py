@@ -38,8 +38,9 @@ def fetch(url, api_key):
         hostname = host.get('hostname', '')
         ip = host.get('ip', '')
         rtype = host.get('rtype', 'A')
+        mac = host.get('mac', '')
         if hostname and ip:
-            print('{}|{}|{}|peer'.format(rtype, hostname, ip))
+            print('{}|{}|{}|peer|{}'.format(rtype, hostname, ip, mac))
 
 
 def main():

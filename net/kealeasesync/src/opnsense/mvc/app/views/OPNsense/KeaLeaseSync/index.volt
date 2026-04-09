@@ -107,6 +107,7 @@
             html += '<thead><tr>';
             html += '<th class="hosts-sort" data-sort="hostname" style="cursor:pointer;">Hostname' + sortIcon('hostname') + '</th>';
             html += '<th class="hosts-sort" data-sort="ip" style="cursor:pointer;">IP Address' + sortIcon('ip') + '</th>';
+            html += '<th class="hosts-sort" data-sort="mac" style="cursor:pointer;">MAC Address' + sortIcon('mac') + '</th>';
             html += '<th class="hosts-sort" data-sort="type" style="cursor:pointer;">Type' + sortIcon('type') + '</th>';
             html += '<th class="hosts-sort" data-sort="online" style="cursor:pointer;">Status' + sortIcon('online') + '</th>';
             html += '</tr></thead><tbody>';
@@ -130,6 +131,7 @@
                 html += '<tr>';
                 html += '<td>' + $('<span>').text(host.hostname).html() + '</td>';
                 html += '<td>' + $('<span>').text(host.ip).html() + '</td>';
+                html += '<td>' + $('<span>').text(host.mac || '').html() + '</td>';
                 html += '<td>' + typeBadge + '</td>';
                 html += '<td>' + statusIcon + '</td>';
                 html += '</tr>';
