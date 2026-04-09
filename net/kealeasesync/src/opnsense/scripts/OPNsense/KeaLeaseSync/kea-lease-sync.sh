@@ -19,26 +19,26 @@ LOG_TAG="kea-lease-sync"
 
 # Read generated config
 if [ ! -f "$CONF_FILE" ]; then
-    logger -t "$LOG_TAG" -p user.err "Config file not found: $CONF_FILE"
+    logger -t "$LOG_TAG" -p daemon.err "Config file not found: $CONF_FILE"
     exit 1
 fi
 . "$CONF_FILE"
 
 # Check if enabled
 if [ "$ENABLED" != "1" ]; then
-    logger -t "$LOG_TAG" -p user.info "Sync disabled, skipping"
+    logger -t "$LOG_TAG" -p daemon.info "Sync disabled, skipping"
     exit 0
 fi
 
 # Validate required fields
 if [ -z "$DIRECT_DOMAIN" ]; then
-    logger -t "$LOG_TAG" -p user.err "directDomain not configured"
+    logger -t "$LOG_TAG" -p daemon.err "directDomain not configured"
     exit 1
 fi
 # ─────────────────────────────────────────────────────────────
 
-log_info()  { logger -t "$LOG_TAG" -p user.info  "$1"; }
-log_err()   { logger -t "$LOG_TAG" -p user.err   "$1"; }
+log_info()  { logger -t "$LOG_TAG" -p daemon.info  "$1"; }
+log_err()   { logger -t "$LOG_TAG" -p daemon.err   "$1"; }
 
 uc() {
     /usr/local/sbin/unbound-control -c "$UNBOUND_CONF" "$@"
