@@ -195,6 +195,22 @@ if [ -f "$STATE_FILE" ]; then
     PREVIOUS_LEASES=$(cat "$STATE_FILE")
 fi
 
+# ── Pre-clean forward/proxy records ──────────────────────────
+# unbound-control local_data APPENDS — it never replaces. Without this, a host
+# whose IP changed would keep its old A/AAAA record alongside the new one (and
+# get served round-robin). Drop existing data once per hostname (so a dual-stack
+# A+AAAA host is re-added cleanly below), then the add loop re-adds fresh. This
+# also self-heals records orphaned by earlier runs, with no dependency on state.
+if [ -s "$CURRENT_LEASES" ]; then
+    awk -F'|' '{print $2}' "$CURRENT_LEASES" | sort -u | while read -r _hn; do
+        [ -z "$_hn" ] && continue
+        uc local_data_remove "${_hn}.${DIRECT_DOMAIN}." 2>/dev/null
+        for pd in $PROXY_DOMAINS; do
+            uc local_data_remove "${_hn}.${pd}." 2>/dev/null
+        done
+    done
+fi
+
 # ── Add/update records ───────────────────────────────────────
 ADDED=0
 HOSTS_JSON=""
@@ -240,18 +256,32 @@ if [ -n "$PREVIOUS_LEASES" ]; then
     : > "$STALE_FILE"
     echo "$PREVIOUS_LEASES" | while IFS='|' read -r rtype hostname ip htype mac; do
         [ -z "$hostname" ] && continue
+        # Exact record (rtype + hostname + ip) still current? Then keep it.
+        # Matching on hostname alone would miss IP changes — the case that left
+        # stale records behind before this check existed.
+        grep -q "^${rtype}|${hostname}|${ip}|" "$CURRENT_LEASES" 2>/dev/null && continue
+
+        # Stale reverse PTR points only at the old IP, so it's independent of the
+        # forward record. Drop it — but not if a current host now owns that IP
+        # (the add loop already re-pointed it).
+        if [ "$rtype" = "A" ] && ! grep -q "^A|[^|]*|${ip}|" "$CURRENT_LEASES" 2>/dev/null; then
+            REV=$(echo "$ip" | awk -F. '{print $4"."$3"."$2"."$1}')
+            uc local_data_remove "${REV}.in-addr.arpa." 2>/dev/null
+        fi
+
+        # Forward/proxy: only remove if the hostname is gone entirely for this
+        # rtype. If it merely changed IP, the pre-clean above already removed the
+        # old data and the add loop re-added the current one — removing here would
+        # delete that fresh record.
         if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
             uc local_data_remove "${hostname}.${DIRECT_DOMAIN}." 2>/dev/null
             for pd in $PROXY_DOMAINS; do
                 uc local_data_remove "${hostname}.${pd}." 2>/dev/null
             done
-            if [ "$rtype" = "A" ]; then
-                REV=$(echo "$ip" | awk -F. '{print $4"."$3"."$2"."$1}')
-                uc local_data_remove "${REV}.in-addr.arpa." 2>/dev/null
-            fi
-            echo x >> "$STALE_FILE"
-            log_info "Removed stale: ${hostname} (${rtype} ${ip})"
         fi
+
+        echo x >> "$STALE_FILE"
+        log_info "Removed stale: ${hostname} (${rtype} ${ip})"
     done
     REMOVED=$(wc -l < "$STALE_FILE" | tr -d ' ')
     rm -f "$STALE_FILE"

@@ -302,33 +302,62 @@ echo "=== Stale record detection tests ==="
 # Previous state
 PREV_STATE="A|old-host|192.168.1.99|dynamic
 A|still-here|192.168.1.10|dynamic
+A|changed-ip|192.168.1.50|dynamic
 AAAA|gone-v6|2001:db8::99|dynamic"
 
-# Current leases
+# Current leases — changed-ip moved .50 -> .51, old-host and gone-v6 dropped
 CURRENT_FILE="$TEST_DIR/current_stale.txt"
 echo "A|still-here|192.168.1.10|dynamic" > "$CURRENT_FILE"
-echo "A|new-host|192.168.1.50|dynamic" >> "$CURRENT_FILE"
+echo "A|changed-ip|192.168.1.51|dynamic" >> "$CURRENT_FILE"
+echo "A|new-host|192.168.1.60|dynamic" >> "$CURRENT_FILE"
 
-# Find stale records (same logic as sync script)
+# Find stale records (tuple-based logic, same as sync script): a record is stale
+# unless the exact rtype+hostname+ip is still current. This catches IP changes,
+# which a hostname-only match would miss.
 STALE="$TEST_DIR/stale.txt"
 : > "$STALE"
 echo "$PREV_STATE" | while IFS='|' read -r rtype hostname ip htype; do
     [ -z "$hostname" ] && continue
-    if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_FILE" 2>/dev/null; then
-        echo "${rtype}|${hostname}|${ip}|${htype}" >> "$STALE"
-    fi
+    grep -q "^${rtype}|${hostname}|${ip}|" "$CURRENT_FILE" 2>/dev/null && continue
+    echo "${rtype}|${hostname}|${ip}|${htype}" >> "$STALE"
 done
 
 STALE_COUNT=$(wc -l < "$STALE" | tr -d ' ')
-assert_eq "detects stale records" "2" "$STALE_COUNT"
-assert_eq "old-host is stale" "A|old-host|192.168.1.99|dynamic" "$(head -1 "$STALE")"
-assert_eq "gone-v6 is stale" "AAAA|gone-v6|2001:db8::99|dynamic" "$(sed -n '2p' "$STALE")"
+assert_eq "detects stale records (incl. IP change)" "3" "$STALE_COUNT"
+
+if grep -q '^A|old-host|192.168.1.99|' "$STALE"; then
+    pass "dropped host is stale"
+else
+    fail "dropped host is stale" "present" "not found"
+fi
+if grep -q '^AAAA|gone-v6|2001:db8::99|' "$STALE"; then
+    pass "gone-v6 is stale"
+else
+    fail "gone-v6 is stale" "present" "not found"
+fi
+if grep -q '^A|changed-ip|192.168.1.50|' "$STALE"; then
+    pass "old IP of changed host is stale"
+else
+    fail "old IP of changed host is stale" "present" "not found"
+fi
 
 if grep -q 'still-here' "$STALE"; then
     fail "still-here not stale" "not present" "found"
 else
     pass "still-here not stale"
 fi
+
+# ── Pre-clean dedup: one local_data_remove per hostname ──
+# A dual-stack host (A + AAAA) must collapse to a single forward-name removal so
+# the re-add of both records survives.
+PRECLEAN_IN="$TEST_DIR/preclean.txt"
+cat > "$PRECLEAN_IN" << 'EOF'
+A|dualhost|192.168.1.10|dynamic
+AAAA|dualhost|2001:db8::10|dynamic
+A|single|192.168.1.11|dynamic
+EOF
+UNIQ_HOSTS=$(awk -F'|' '{print $2}' "$PRECLEAN_IN" | sort -u | wc -l | tr -d ' ')
+assert_eq "pre-clean dedups to unique hostnames" "2" "$UNIQ_HOSTS"
 
 # ══════════════════════════════════════════════════════════════
 echo ""
