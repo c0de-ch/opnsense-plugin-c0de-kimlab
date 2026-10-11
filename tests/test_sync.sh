@@ -528,6 +528,41 @@ assert_eq "mikrotik host takes precedence over peer" \
     "192.168.88.20" "$(grep '^A|printer|' "$MT_LOCAL" | cut -d'|' -f3)"
 assert_eq "peer-only host still added after mikrotik" "1" "$(grep -c '|peer|' "$MT_LOCAL")"
 
+# With a conflict suffix, a MikroTik host colliding with a Kea name is renamed
+MT_SUFFIX_LOCAL="$TEST_DIR/mt_suffix_local.txt"
+echo "A|myhost|192.168.1.10|dynamic|aa:bb:cc:dd:ee:01" > "$MT_SUFFIX_LOCAL"
+echo "A|server|192.168.1.20|static|aa:bb:cc:dd:ee:02" >> "$MT_SUFFIX_LOCAL"
+echo "A|taken|192.168.1.30|dynamic|aa:bb:cc:dd:ee:06" >> "$MT_SUFFIX_LOCAL"
+echo "A|taken-net28|192.168.1.31|dynamic|aa:bb:cc:dd:ee:07" >> "$MT_SUFFIX_LOCAL"
+echo "A|taken|192.168.88.40|mikrotik|aa:bb:cc:dd:ee:08" >> "$MT_FILE"
+echo "A|myhost|192.168.88.11|mikrotik|aa:bb:cc:dd:ee:09" >> "$MT_FILE"
+
+MIKROTIK_CONFLICT_SUFFIX="-net28"
+# Merge logic: same as kea-lease-sync.sh step 3b
+while IFS='|' read -r rtype hostname ip htype mac; do
+    [ -z "$ip" ] && continue
+    hostname=$(clean_hostname "$hostname") || continue
+    if [ -n "$MIKROTIK_CONFLICT_SUFFIX" ] && \
+        grep -qE "^(A|AAAA)\|${hostname}\|[^|]*\|(static|dynamic)\|" "$MT_SUFFIX_LOCAL" 2>/dev/null; then
+        hostname="${hostname}${MIKROTIK_CONFLICT_SUFFIX}"
+    fi
+    if ! grep -q "^${rtype}|${hostname}|" "$MT_SUFFIX_LOCAL" 2>/dev/null; then
+        echo "${rtype}|${hostname}|${ip}|mikrotik|${mac}" >> "$MT_SUFFIX_LOCAL"
+    fi
+done < "$MT_FILE"
+
+assert_eq "kea host untouched with conflict suffix" \
+    "A|myhost|192.168.1.10|dynamic|aa:bb:cc:dd:ee:01" "$(grep '^A|myhost|' "$MT_SUFFIX_LOCAL")"
+assert_eq "conflicting mikrotik A renamed with suffix" \
+    "A|myhost-net28|192.168.88.10|mikrotik|aa:bb:cc:dd:ee:01" "$(grep '^A|myhost-net28|' "$MT_SUFFIX_LOCAL")"
+assert_eq "conflicting mikrotik AAAA renamed with suffix too" \
+    "AAAA|myhost-net28|2001:db8::10|mikrotik|aa:bb:cc:dd:ee:01" "$(grep '^AAAA|myhost-net28|' "$MT_SUFFIX_LOCAL")"
+assert_empty "no mikrotik record left under the kea name" "$(grep '|myhost|.*|mikrotik|' "$MT_SUFFIX_LOCAL" || true)"
+assert_eq "non-conflicting mikrotik host keeps its name" \
+    "A|printer|192.168.88.20|mikrotik|aa:bb:cc:dd:ee:03" "$(grep '^A|printer|' "$MT_SUFFIX_LOCAL")"
+assert_eq "suffixed name already in kea is dropped" \
+    "192.168.1.31" "$(grep '^A|taken-net28|' "$MT_SUFFIX_LOCAL" | cut -d'|' -f3)"
+
 # ══════════════════════════════════════════════════════════════
 echo ""
 echo "=== Empty lease file tests ==="
