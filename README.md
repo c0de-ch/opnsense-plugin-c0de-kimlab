@@ -21,6 +21,7 @@ Includes automatic PTR records, stale record cleanup, and a dashboard widget wit
 - Status/hosts/log API endpoints
 - Dashboard widget with table view and SVG radial network map
 - ARP-based online/offline detection
+- Optional MikroTik RouterOS source — DHCPv4 leases and DHCPv6 bindings fetched via REST API
 - Two-tier defaults: safe distribution defaults in model, personal values via gitignored `defaults.conf`
 
 ## Prerequisites
@@ -91,6 +92,21 @@ make package
 
 The cron job is created automatically based on the **Scan Interval** setting.
 
+### MikroTik DHCP source (optional)
+
+Hosts that get their address from a MikroTik router can be registered in Unbound alongside the Kea hosts. They show up with type `mikrotik`.
+
+1. On the router (RouterOS v7.1+), enable the `www-ssl` service (**IP > Services**) and create a read-only user for the API
+2. Under **MikroTik DHCP Source**, enable it and set **Host**, **Port** (default 443), **Username** and **Password**
+3. Enable **Verify SSL Certificate** only if the router has a certificate trusted by OPNsense (off by default, for self-signed certificates)
+
+What gets synced:
+
+- **IPv4** — bound leases from `/ip/dhcp-server/lease` (A + PTR records)
+- **IPv6** — bound single-address bindings from `/ipv6/dhcp-server/binding` (AAAA records); delegated prefixes are skipped. DHCPv6 bindings have no hostname, so the name comes from the IPv4 lease with the same MAC address (taken from the client DUID or its EUI-64 link-local address), falling back to `dhcp-<mac>` or `dhcp-<end of DUID>`
+
+If a hostname exists in both Kea and MikroTik, the Kea entry wins. MikroTik hosts are also shared with a peer firewall when peer sync is enabled. Fetch errors are written to the plugin log.
+
 ### Enable the dashboard widget
 
 **Lobby > Dashboard > Add Widget > Kea Lease Sync**
@@ -128,6 +144,7 @@ net/kealeasesync/
         │       └── index.volt
         ├── scripts/OPNsense/KeaLeaseSync/
         │   ├── kea-lease-sync.sh
+        │   ├── fetch_mikrotik_leases.py
         │   ├── get_status.py
         │   └── get_hosts.py
         ├── service/

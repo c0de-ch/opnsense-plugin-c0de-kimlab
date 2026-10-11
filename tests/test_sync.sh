@@ -469,6 +469,67 @@ assert_eq "empty peer file no changes" "$BEFORE_COUNT" "$AFTER_COUNT"
 
 # ══════════════════════════════════════════════════════════════
 echo ""
+echo "=== MikroTik host precedence tests ==="
+# ══════════════════════════════════════════════════════════════
+
+# Simulate hosts already collected from Kea
+MT_LOCAL="$TEST_DIR/mt_local.txt"
+echo "A|myhost|192.168.1.10|dynamic|aa:bb:cc:dd:ee:01" > "$MT_LOCAL"
+echo "A|server|192.168.1.20|static|aa:bb:cc:dd:ee:02" >> "$MT_LOCAL"
+
+# Simulate fetch_mikrotik_leases.py output (some overlap with Kea)
+MT_FILE="$TEST_DIR/mt_remote.txt"
+cat > "$MT_FILE" << 'EOF'
+A|myhost|192.168.88.10|mikrotik|aa:bb:cc:dd:ee:01
+A|Printer.lan|192.168.88.20|mikrotik|aa:bb:cc:dd:ee:03
+AAAA|myhost|2001:db8::10|mikrotik|aa:bb:cc:dd:ee:01
+AAAA|printer|2001:db8::20|mikrotik|aa:bb:cc:dd:ee:03
+A|printer|192.168.88.21|mikrotik|aa:bb:cc:dd:ee:04
+A|noip||mikrotik|aa:bb:cc:dd:ee:05
+A|aabbccddeeff|192.168.88.30|mikrotik|aa:bb:cc:dd:ee:ff
+EOF
+
+# Merge logic: same as kea-lease-sync.sh step 3b
+while IFS='|' read -r rtype hostname ip htype mac; do
+    [ -z "$ip" ] && continue
+    hostname=$(clean_hostname "$hostname") || continue
+    if ! grep -q "^${rtype}|${hostname}|" "$MT_LOCAL" 2>/dev/null; then
+        echo "${rtype}|${hostname}|${ip}|mikrotik|${mac}" >> "$MT_LOCAL"
+    fi
+done < "$MT_FILE"
+
+assert_eq "mikrotik merge total count" "5" "$(wc -l < "$MT_LOCAL" | tr -d ' ')"
+assert_eq "mikrotik type count" "3" "$(grep -c '|mikrotik|' "$MT_LOCAL")"
+assert_eq "kea host takes precedence over mikrotik" \
+    "A|myhost|192.168.1.10|dynamic|aa:bb:cc:dd:ee:01" "$(grep '^A|myhost|' "$MT_LOCAL")"
+assert_eq "mikrotik AAAA added next to kea A record" \
+    "AAAA|myhost|2001:db8::10|mikrotik|aa:bb:cc:dd:ee:01" "$(grep '^AAAA|myhost|' "$MT_LOCAL")"
+assert_eq "mikrotik hostname cleaned, MAC kept" \
+    "A|printer|192.168.88.20|mikrotik|aa:bb:cc:dd:ee:03" "$(grep '^A|printer|' "$MT_LOCAL")"
+assert_eq "mikrotik IPv6 host added" \
+    "AAAA|printer|2001:db8::20|mikrotik|aa:bb:cc:dd:ee:03" "$(grep '^AAAA|printer|' "$MT_LOCAL")"
+assert_empty "mikrotik entry without IP skipped" "$(grep 'noip' "$MT_LOCAL" || true)"
+assert_empty "mikrotik bare-MAC hostname skipped" "$(grep 'aabbccddeeff' "$MT_LOCAL" || true)"
+
+# Kea type counts must not include MikroTik hosts
+assert_eq "static count excludes mikrotik" "1" "$(grep -c '|static|' "$MT_LOCAL")"
+assert_eq "dynamic count excludes mikrotik" "1" "$(grep -c '|dynamic|' "$MT_LOCAL")"
+
+# MikroTik hosts take precedence over peer hosts
+echo "A|printer|10.0.0.20|peer|" > "$TEST_DIR/mt_peer.txt"
+echo "A|remote-only|10.0.0.30|peer|" >> "$TEST_DIR/mt_peer.txt"
+while IFS='|' read -r rtype hostname ip htype mac; do
+    [ -z "$hostname" ] && continue
+    if ! grep -q "^${rtype}|${hostname}|" "$MT_LOCAL" 2>/dev/null; then
+        echo "${rtype}|${hostname}|${ip}|peer|${mac}" >> "$MT_LOCAL"
+    fi
+done < "$TEST_DIR/mt_peer.txt"
+assert_eq "mikrotik host takes precedence over peer" \
+    "192.168.88.20" "$(grep '^A|printer|' "$MT_LOCAL" | cut -d'|' -f3)"
+assert_eq "peer-only host still added after mikrotik" "1" "$(grep -c '|peer|' "$MT_LOCAL")"
+
+# ══════════════════════════════════════════════════════════════
+echo ""
 echo "=== Empty lease file tests ==="
 # ══════════════════════════════════════════════════════════════
 

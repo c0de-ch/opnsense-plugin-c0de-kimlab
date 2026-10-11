@@ -57,6 +57,9 @@
                 html += '<tr><td><strong>Static Reservations</strong></td><td>' + (data.static_count || 0) + '</td></tr>';
                 html += '<tr><td><strong>Dynamic Leases</strong></td><td>' + (data.dynamic_count || 0) + '</td></tr>';
                 html += '<tr><td><strong>Peer Hosts</strong></td><td>' + (data.peer_count || 0) + '</td></tr>';
+                if (data.mikrotik_count > 0) {
+                    html += '<tr><td><strong>MikroTik Leases</strong></td><td>' + data.mikrotik_count + '</td></tr>';
+                }
                 html += '<tr><td><strong>Duration</strong></td><td>' + (data.duration || '-') + '</td></tr>';
                 html += '</table>';
                 $("#sync_status").html(html);
@@ -117,6 +120,8 @@
                     typeBadge = '<span class="label label-info">static</span>';
                 } else if (host.type === 'peer') {
                     typeBadge = '<span class="label label-warning">peer</span>';
+                } else if (host.type === 'mikrotik') {
+                    typeBadge = '<span class="label label-primary">mikrotik</span>';
                 } else {
                     typeBadge = '<span class="label label-default">dynamic</span>';
                 }
