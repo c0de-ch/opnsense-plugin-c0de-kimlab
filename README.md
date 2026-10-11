@@ -105,7 +105,7 @@ What gets synced:
 - **IPv4** — bound leases from `/ip/dhcp-server/lease` (A + PTR records)
 - **IPv6** — bound single-address bindings from `/ipv6/dhcp-server/binding` (AAAA records); delegated prefixes are skipped. DHCPv6 bindings have no hostname, so the name comes from the IPv4 lease with the same MAC address (taken from the client DUID or its EUI-64 link-local address), falling back to `dhcp-<mac>` or `dhcp-<end of DUID>`
 
-If a hostname exists in both Kea and MikroTik, the Kea entry wins. MikroTik hosts are also shared with a peer firewall when peer sync is enabled. Fetch errors are written to the plugin log.
+If a hostname exists in both Kea and MikroTik, the Kea entry wins and the MikroTik host is dropped. To keep both, set **Name Conflict Suffix** (e.g. `-net28`): the MikroTik host is then registered as `<hostname>-net28`, for both its A and AAAA records. MikroTik hosts are also shared with a peer firewall when peer sync is enabled. Fetch errors are written to the plugin log.
 
 ### Enable the dashboard widget
 

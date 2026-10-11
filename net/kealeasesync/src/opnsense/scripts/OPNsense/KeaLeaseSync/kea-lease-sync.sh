@@ -180,6 +180,12 @@ if [ "$MIKROTIK_ENABLED" = "1" ] && [ -n "$MIKROTIK_HOST" ] && [ -n "$MIKROTIK_U
         while IFS='|' read -r rtype hostname ip htype mac; do
             [ -z "$ip" ] && continue
             hostname=$(clean_hostname "$hostname") || continue
+            # With a conflict suffix set, a MikroTik host whose name Kea already uses
+            # (for any record type) is registered as <name><suffix> instead of dropped
+            if [ -n "$MIKROTIK_CONFLICT_SUFFIX" ] && \
+                grep -qE "^(A|AAAA)\|${hostname}\|[^|]*\|(static|dynamic)\|" "$CURRENT_LEASES" 2>/dev/null; then
+                hostname="${hostname}${MIKROTIK_CONFLICT_SUFFIX}"
+            fi
             # Kea hosts take precedence — only add if no Kea entry for this rtype+hostname
             if ! grep -q "^${rtype}|${hostname}|" "$CURRENT_LEASES" 2>/dev/null; then
                 echo "${rtype}|${hostname}|${ip}|mikrotik|${mac}" >> "$CURRENT_LEASES"
