@@ -11,8 +11,9 @@ Outputs pipe-delimited lines to stdout: RTYPE|hostname|ip|mikrotik|mac
   AAAA  — bound DHCPv6 addresses  (/rest/ipv6/dhcp-server/binding)
 
 DHCPv6 bindings carry no hostname, so the name is taken from the DHCPv4
-lease with the same MAC address (derived from the client DUID). Delegated
-prefixes are skipped.
+lease with the same MAC address (derived from the client DUID, or from the
+client's link-local address when that is EUI-64 based). Delegated prefixes
+are skipped.
 
 If the DHCPv4 fetch fails: prints the error to stderr and exits 1.
 If only the DHCPv6 fetch fails: prints a warning to stderr, still outputs
@@ -75,6 +76,20 @@ def mac_from_duid(duid):
     return ''
 
 
+def mac_from_link_local(address):
+    """Extract the MAC address from an EUI-64 based link-local address, or ''."""
+    try:
+        addr = ipaddress.IPv6Address(address or '')
+    except ValueError:
+        return ''
+    raw = addr.packed
+    if not addr.is_link_local or raw[11:13] != b'\xff\xfe':
+        return ''
+    # EUI-64: MAC split around ff:fe, with the universal/local bit flipped
+    mac = bytes([raw[8] ^ 0x02]) + raw[9:11] + raw[13:16]
+    return ':'.join('{:02x}'.format(b) for b in mac)
+
+
 def is_true(value):
     """RouterOS REST returns booleans as the strings 'true'/'false'."""
     return value in (True, 'true')
@@ -128,7 +143,7 @@ def parse_bindings(data, names_by_mac):
             continue
 
         duid = duid_hex(binding.get('duid', ''))
-        mac = mac_from_duid(duid)
+        mac = mac_from_duid(duid) or mac_from_link_local(binding.get('client-address', ''))
         hostname = names_by_mac.get(mac) if mac else None
         if not hostname and mac:
             hostname = 'dhcp-' + mac.replace(':', '')

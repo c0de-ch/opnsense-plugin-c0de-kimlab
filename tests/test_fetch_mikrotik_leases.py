@@ -138,6 +138,24 @@ class TestMacHelpers(unittest.TestCase):
         self.assertEqual(mt.mac_from_duid('0xzz'), '')
 
 
+class TestMacFromLinkLocal(unittest.TestCase):
+
+    def test_eui64(self):
+        self.assertEqual(
+            mt.mac_from_link_local('fe80::be24:11ff:fe73:1d5d'), 'bc:24:11:73:1d:5d')
+
+    def test_privacy_address_has_no_mac(self):
+        self.assertEqual(mt.mac_from_link_local('fe80::14b2:851e:c614:b5c9'), '')
+
+    def test_not_link_local(self):
+        self.assertEqual(mt.mac_from_link_local('2001:db8::be24:11ff:fe73:1d5d'), '')
+
+    def test_invalid(self):
+        self.assertEqual(mt.mac_from_link_local(''), '')
+        self.assertEqual(mt.mac_from_link_local(None), '')
+        self.assertEqual(mt.mac_from_link_local('garbage'), '')
+
+
 class TestParseLeases(unittest.TestCase):
 
     def test_bound_leases(self):
@@ -216,6 +234,14 @@ class TestParseBindings(unittest.TestCase):
             {'address': '2001:db8::20/128', 'duid': '0x00020000ab11deadbeef0001', 'status': 'bound'},
         ], {})
         self.assertEqual(lines, ['AAAA|dhcp-deadbeef0001|2001:db8::20|mikrotik|'])
+
+    def test_hostname_via_link_local_client_address(self):
+        """DUID without a MAC: fall back to the EUI-64 link-local client address."""
+        lines = mt.parse_bindings([
+            {'address': '2001:db8::e/128', 'duid': '0x00020000ab11a197ea1c81e3ce53',
+             'client-address': 'fe80::be24:11ff:fe73:1d5d', 'status': 'bound'},
+        ], {'bc:24:11:73:1d:5d': 'nodered01'})
+        self.assertEqual(lines, ['AAAA|nodered01|2001:db8::e|mikrotik|bc:24:11:73:1d:5d'])
 
     def test_skips_unbound_and_disabled(self):
         lines = mt.parse_bindings([
